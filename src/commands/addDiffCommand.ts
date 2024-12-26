@@ -1,0 +1,59 @@
+import { confirm } from '@guiurm/askly';
+import { genCommand } from '@guiurm/termify';
+import { AppError, ErrorHandler } from '../error-handler';
+import { GitDiffService } from '../services/GitDiffService';
+import { CacheStore } from '../services/cacheService';
+import { exeCommand } from '../utils/gitServiceUtils';
+
+const diffPickCommand = genCommand(
+    'add-diff',
+    [
+        {
+            alias: ['-f'],
+            optionType: 'string',
+            name: 'file',
+            flag: '--file'
+        }
+    ],
+    []
+);
+
+diffPickCommand.action(async (_, { file }) => {
+    const diff = await GitDiffService.parseGitDiffOutput({ file });
+
+    if (diff.length === 0) ErrorHandler.throw(new AppError(`No diff found for '${file}'.`));
+    for (const fileDiff of diff) {
+        console.log(`In file ${fileDiff.file}`);
+        console.log(fileDiff.aFile);
+        console.log(fileDiff.bFile + '\n');
+        for (const hunk of fileDiff.hunks) {
+            console.log(hunk);
+            const answer = await confirm('Add this hunk?');
+            if (answer) fileDiff.acceptedHunks.push(hunk);
+            else fileDiff.ignoredHunks.push(hunk);
+        }
+
+        if (fileDiff.acceptedHunks.length === 0) continue;
+
+        const cache = new CacheStore();
+        const file = cache.getFileCache(
+            cache.createPatchCache({
+                acceptedDiff: fileDiff.getAcceptedDiffPatch() as string,
+                filePath: fileDiff.file,
+                originalDiff: fileDiff.getTotalDiffPatch(),
+                ignoredDiff: fileDiff.getIgnoredDiffPatch() ?? undefined
+            })
+        );
+
+        await exeCommand(`git checkout ${fileDiff.fileName}`);
+        await exeCommand(`git apply ${file.acceptedChanges.cacheFilePath}`, async () => {
+            await exeCommand(`git apply ${file.originalState.cacheFilePath}`);
+        });
+        await exeCommand(`git add ${fileDiff.fileName}`);
+        if (file.ignoredChanges) await exeCommand(`git apply ${file.ignoredChanges.cacheFilePath}`);
+
+        cache.clearFileCache(file.hash);
+    }
+});
+
+export { diffPickCommand };

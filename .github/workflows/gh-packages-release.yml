@@ -1,0 +1,24 @@
+name: Publish-github-packages
+
+on:
+  workflow_dispatch:
+
+jobs:
+  publish-gpr:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: https://npm.pkg.github.com/@guiurm
+      - run: npm ci
+        env:
+          GHP_TOKEN: ${{secrets.GHP_TOKEN}}
+      - run: npm run build
+      - run: npm publish
+        env:
+          GHP_TOKEN: ${{secrets.GHP_TOKEN}}
