@@ -10,7 +10,7 @@
     "dev3": "ts-node -r tsconfig-paths/register src/index.ts config-user",
     "format": "prettier --ignore-path .prettierignore --write src/",
     "clearBuild": "rimraf dist build",
-    "build:ts": "npm run clearBuild && tsc --project tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:ts": "npm run clearBuild && tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
     "build": "npm run format && npm run build:ts && rollup -c "
   },
   "exports": {
