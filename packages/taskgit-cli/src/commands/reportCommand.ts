@@ -1,6 +1,5 @@
+import { AppError, ErrorHandler, GitService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { AppError, ErrorHandler } from '../error-handler';
-import { GitService } from '../services/gitService';
 
 const validTargets = ['staged', 'unstaged', 'untracked'] as const;
 const reportCommand = genCommand(

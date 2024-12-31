@@ -1,6 +1,5 @@
+import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { AppError, ErrorHandler } from '../error-handler';
-import { GitServiceTagger } from '../services/GitServiceTagger';
 
 const tagRemoveCommand = genCommand('tag-remove', [
     { name: 'tagName', flag: '-t', alias: ['--tag'], optionType: 'string', required: true },

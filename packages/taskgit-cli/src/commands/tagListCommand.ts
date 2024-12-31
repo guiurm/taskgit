@@ -1,6 +1,5 @@
+import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { AppError, ErrorHandler } from '../error-handler';
-import { GitServiceTagger } from '../services/GitServiceTagger';
 
 const tagListCommand = genCommand(
     'tag-list',

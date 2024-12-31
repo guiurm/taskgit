@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
+import { AppError, ErrorHandler, IS_DEV, IS_TEST } from '@guiurm/taskgit-core';
 import { Termify } from '@guiurm/termify';
 import { commands } from './commands';
-import { AppError, ErrorHandler } from './error-handler';
-import { IS_DEV, IS_TEST } from './globals';
 
 //exeCommand("git config user.name");
 const run = async () => {

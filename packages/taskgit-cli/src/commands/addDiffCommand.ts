@@ -1,9 +1,6 @@
 import { confirm } from '@guiurm/askly';
+import { AppError, CacheStore, ErrorHandler, exeCommand, GitDiffService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { AppError, ErrorHandler } from '../error-handler';
-import { GitDiffService } from '../services/GitDiffService';
-import { CacheStore } from '../services/cacheService';
-import { exeCommand } from '../utils/gitServiceUtils';
 
 const diffPickCommand = genCommand(
     'add-diff',

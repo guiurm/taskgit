@@ -2,11 +2,12 @@ import { createHash } from 'crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'fs';
 import { dirname, join } from 'path';
 
-class FileServiceError /* extends AppError */ {
+class FileServiceError extends Error {
     public readonly file: string;
     public readonly action: 'read' | 'write' | 'delete';
 
     constructor(message: string, file: string, action: 'read' | 'write' | 'delete') {
+        super(message);
         //super(message, 2);
         this.file = file;
         this.action = action;

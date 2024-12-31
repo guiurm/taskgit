@@ -1,4 +1,3 @@
-import resolve from "@rollup/plugin-node-resolve";
 import { dts } from "rollup-plugin-dts";
 
 export default [
@@ -14,6 +13,16 @@ export default [
     {
         input: "build/index.js",
         output: [
+            /*{
+                dir: "../../dist",
+                format: "esm",
+                entryFileNames: "index.mjs",
+            },
+            {
+                dir: "../../dist",
+                format: "cjs",
+                entryFileNames: "index.cjs",
+            },*/
             {
                 dir: "dist",
                 format: "esm",
@@ -25,12 +34,15 @@ export default [
                 entryFileNames: "index.cjs",
             },
         ],
-        plugins: [resolve()],
+        // plugins: [resolve()],
         // external: ["@guiurm/termify", "@guiurm/askly"],
     },
     {
         input: "build/index.d.ts",
-        output: [{ file: "dist/main.d.ts", format: "es" }],
+        output: [
+            //{ file: "../../dist/index.d.ts", format: "es" },
+            { file: "dist/index.d.ts", format: "es" },
+        ],
         plugins: [dts()],
     },
 ];

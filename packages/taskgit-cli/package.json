@@ -1,0 +1,27 @@
+{
+  "name": "@guiurm/taskgit-cli",
+  "version": "1.0.0",
+  "main": "dist/index.mjs",
+  "type": "module",
+  "bin": {
+    "taskgit": "./dist/index.mjs"
+  },
+  "scripts": {
+    "dev": "npm run build:ts && node build/index.js",
+    "dev2": "ts-node -r tsconfig-paths/register src/index.ts commit -t fix -m \"test test\"",
+    "dev3": "ts-node -r tsconfig-paths/register src/index.ts config-user",
+    "format": "prettier --ignore-path .prettierignore --write src/",
+    "clearBuild": "rimraf dist build",
+    "build:ts": "npm run clearBuild && tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
+    "build": "npm run format && npm run build:ts && rollup -c "
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@guiurm/askly": "^1.0.1",
+    "@guiurm/taskgit-core": "^1.0.0",
+    "@guiurm/termify": "^1.1.1"
+  }
+}

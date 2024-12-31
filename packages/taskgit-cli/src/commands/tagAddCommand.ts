@@ -1,6 +1,6 @@
 import { question } from '@guiurm/askly';
+import { GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { GitServiceTagger } from '../services/GitServiceTagger';
 
 const tagAddCommand = genCommand('tag-add', [], []);
 

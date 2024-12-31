@@ -1,6 +1,5 @@
+import { ChangeLogService, GitService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { ChangeLogService } from '../services/ChangeLogService';
-import { GitService } from '../services/gitService';
 
 const changelogCommand = genCommand(
     'changelog',

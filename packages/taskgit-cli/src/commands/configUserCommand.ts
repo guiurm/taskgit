@@ -1,7 +1,6 @@
 import { confirm, question } from '@guiurm/askly';
+import { ErrorHandler, GitService, GitServiceError } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { ErrorHandler, GitServiceError } from '../error-handler';
-import { GitService } from '../services/gitService';
 
 const configUserCommand = genCommand(
     'config-user',

@@ -1,9 +1,7 @@
 import { confirm, question, select } from '@guiurm/askly';
+import { AppError, ErrorHandler, ExternalServiceError, GitService, exeCommand } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
-import { AppError, ErrorHandler, ExternalServiceError } from '../error-handler';
 import { COMMIT_STANDARD_TYPES } from '../globals';
-import { GitService } from '../services/gitService';
-import { exeCommand } from '../utils/gitServiceUtils';
 
 const commitCommand = genCommand(
     'commit',
@@ -38,7 +36,14 @@ const commitCommand = genCommand(
 
             required: false
         },
-        { name: 'ammend', optionType: 'boolean', flag: '-a', alias: ['--ammend'], required: false, defaultValue: false }
+        {
+            name: 'ammend',
+            optionType: 'boolean',
+            flag: '-a',
+            alias: ['--ammend'],
+            required: false,
+            defaultValue: false
+        }
     ] as const,
     [] as const
 );
