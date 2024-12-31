@@ -1,0 +1,32 @@
+{
+  "name": "@guiurm/taskgit-core",
+  "version": "1.0.0",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "npm run build:ts && node build/index.js",
+    "format": "prettier --ignore-path .prettierignore --write src/",
+    "clearBuild": "rimraf dist build",
+    "build:ts": "npm run clearBuild && tsc --project tsconfig.json && tsc-alias -p tsconfig.json",
+    "build": "npm run format && npm run build:ts && rollup -c "
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "package.json",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {}
+}
