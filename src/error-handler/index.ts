@@ -48,17 +48,6 @@ class GitServiceError extends AppError {
     }
 }
 
-class FileServiceError extends AppError {
-    public readonly file: string;
-    public readonly action: 'read' | 'write' | 'delete';
-
-    constructor(message: string, file: string, action: 'read' | 'write' | 'delete') {
-        super(message, 2);
-        this.file = file;
-        this.action = action;
-    }
-}
-
 class ExternalServiceError extends AppError {
     public readonly service: string;
 
@@ -69,7 +58,7 @@ class ExternalServiceError extends AppError {
     }
 }
 
-export class ErrorHandler {
+class ErrorHandler {
     private static _subscriber: ((error: AppError) => void)[] = [];
 
     static subscribe(subscriber: (error: AppError) => void) {
@@ -85,4 +74,4 @@ export class ErrorHandler {
         this._subscriber.forEach(s => s(error));
     }
 }
-export { AppError, ExternalServiceError, FileServiceError, GitServiceError };
+export { AppError, ErrorHandler, ExternalServiceError, GitServiceError };
