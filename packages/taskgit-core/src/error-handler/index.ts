@@ -71,7 +71,13 @@ class ErrorHandler {
     }
 
     static throw(error: AppError) {
-        this._subscriber.forEach(s => s(error));
+        let i = 0;
+        this._subscriber.forEach(s => {
+            s(error);
+            i++;
+        });
+        if (i === 0) throw error;
     }
 }
+
 export { AppError, ErrorHandler, ExternalServiceError, GitServiceError };
