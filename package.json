@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "npm run build && cross-env NODE_ENV=development node dist/cli.cjs",
+    "dev2": "cross-env NODE_ENV=development node dist/cli.cjs",
     "build:core": "npm run build -w @guiurm/taskgit-core",
     "build:cli": "npm run build -w @guiurm/taskgit-cli",
     "build": "npm run build:core && npm run build:cli"
