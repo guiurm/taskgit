@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, readFileSync, renameSync, Stats, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'path';
 
 class FileServiceError extends Error {
@@ -134,10 +134,10 @@ const mf = (originPath: string, destinationPath: string, cwd: string = process.c
  * Gets the stats of a file at the given path.
  *
  * @param {string} path - The path to the file to get the stats from.
- * @returns {import("fs").Stats} The stats of the file.
+ * @returns {import("node:fs").Stats} The stats of the file.
  * @throws {FileServiceError} If the file does not exist at the given path.
  */
-const getFileStat = (path: string) => {
+const getFileStat = (path: string): Stats => {
     if (!existsPath(path)) {
         const error = new FileServiceError(`The file at '${path}' does not exist.`, path, 'read');
         // ErrorHandler.throw(error);

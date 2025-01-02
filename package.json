@@ -1,10 +1,10 @@
 {
   "name": "@guiurm/taskgit",
   "version": "1.1.0",
-  "main": "dist/index.cjs",
+  "main": "dist/cli.cjs",
   "type": "module",
   "scripts": {
-    "dev": "npm run build && node dist/index.cjs",
+    "dev": "npm run build && cross-env NODE_ENV=development node dist/cli.cjs",
     "build:core": "npm run build -w @guiurm/taskgit-core",
     "build:cli": "npm run build -w @guiurm/taskgit-cli",
     "build": "npm run build:core && npm run build:cli"
@@ -29,6 +29,7 @@
     "@rollup/plugin-node-resolve": "^16.0.0",
     "@rollup/plugin-typescript": "^12.1.2",
     "@types/node": "^22.10.2",
+    "cross-env": "^7.0.3",
     "eslint": "^9.15.0",
     "prettier": "^3.3.3",
     "rimraf": "^6.0.1",
