@@ -2,7 +2,7 @@ import { question } from '@guiurm/askly';
 import { GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const tagAddCommand = genCommand('tag-add', [], []);
+const tagAddCommand = genCommand({ name: 'tag-add' });
 
 tagAddCommand.action(async () => {
     console.log('Creating new tag:');

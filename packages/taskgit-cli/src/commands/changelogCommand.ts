@@ -1,9 +1,9 @@
 import { ChangeLogService, GitService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const changelogCommand = genCommand(
-    'changelog',
-    [
+const changelogCommand = genCommand({
+    name: 'changelog',
+    options: [
         {
             name: 'from',
             flag: '-f',
@@ -24,16 +24,16 @@ const changelogCommand = genCommand(
             optionType: 'string'
         }
     ] as const,
-    [
+    args: [
         {
             name: 'outputFile',
             type: 'string',
             required: true
         }
     ] as const
-);
+});
 
-changelogCommand.action(async (_, { from, to, branch }, { outputFile }) => {
+changelogCommand.action(async ({ from, to, branch }, { outputFile }) => {
     const commits = await GitService.log({ to, from, branch });
     ChangeLogService.generateChangelog({ commits, version: '1.0.0', outputFile });
 

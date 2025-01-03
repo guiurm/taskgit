@@ -14,7 +14,7 @@ const run = async () => {
         process.exit(1);
     });
 
-    await new Termify(commands).start();
+    await new Termify({ appName: 'taskgit', commands, version: AppError.VERSION }).start();
 };
 
 run();

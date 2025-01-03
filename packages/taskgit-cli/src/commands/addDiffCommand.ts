@@ -2,20 +2,20 @@ import { confirm } from '@guiurm/askly';
 import { AppError, CacheStore, ErrorHandler, exeCommand, GitDiffService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const diffPickCommand = genCommand(
-    'add-diff',
-    [
+const diffPickCommand = genCommand({
+    name: 'add-diff',
+    args: [],
+    options: [
         {
             alias: ['-f'],
             optionType: 'string',
             name: 'file',
             flag: '--file'
         }
-    ],
-    []
-);
+    ]
+});
 
-diffPickCommand.action(async (_, { file }) => {
+diffPickCommand.action(async ({ file }) => {
     const diff = await GitDiffService.parseGitDiffOutput({ file });
 
     if (diff.length === 0) ErrorHandler.throw(new AppError(`No diff found for '${file}'.`));

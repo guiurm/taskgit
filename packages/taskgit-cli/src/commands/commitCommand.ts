@@ -3,21 +3,29 @@ import { AppError, ErrorHandler, ExternalServiceError, GitService, exeCommand } 
 import { genCommand } from '@guiurm/termify';
 import { COMMIT_STANDARD_TYPES } from '../globals';
 
-const commitCommand = genCommand(
-    'commit',
-    [
+const commitCommand = genCommand({
+    name: 'commit',
+    args: [],
+    options: [
         {
             name: 'type',
             optionType: 'string',
             flag: '-t',
             alias: ['--type'],
-            defaultValue: 'wip',
+            //defaultValue: 'wip',
             required: false,
 
             customValidator: n => {
-                if (!COMMIT_STANDARD_TYPES.map(t => t.name).includes(n))
-                    ErrorHandler.throw(new AppError('Invalid type of commit'));
-                return n;
+                if (
+                    !COMMIT_STANDARD_TYPES.map(t => t.name).includes(
+                        n as (typeof COMMIT_STANDARD_TYPES)[number]['name']
+                    )
+                )
+                    return {
+                        error: true,
+                        message: `${n} is not a valid standard commit type. Valid types are ${COMMIT_STANDARD_TYPES.map(t => t.name).join(', ')}`
+                    };
+                else return { error: false };
             }
         },
         {
@@ -44,11 +52,10 @@ const commitCommand = genCommand(
             required: false,
             defaultValue: false
         }
-    ] as const,
-    [] as const
-);
+    ]
+});
 
-commitCommand.action(async (_, { body, title, type, ammend }, argsP) => {
+commitCommand.action(async ({ body, title, type, ammend }) => {
     const report = await GitService.filesReport();
     if (report.stagedReport() === '') {
         ErrorHandler.throw(

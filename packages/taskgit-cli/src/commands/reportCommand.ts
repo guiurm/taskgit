@@ -1,10 +1,10 @@
-import { AppError, ErrorHandler, GitService } from '@guiurm/taskgit-core';
+import { GitService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const validTargets = ['staged', 'unstaged', 'untracked'] as const;
-const reportCommand = genCommand(
-    'report',
-    [
+const reportCommand = genCommand({
+    name: 'report',
+    options: [
         {
             flag: '-t',
             name: 'target',
@@ -12,15 +12,18 @@ const reportCommand = genCommand(
             required: false,
             alias: ['--target'],
             customValidator: value => {
-                if (!validTargets.includes(value))
-                    ErrorHandler.throw(new AppError(`Invalid value fot target: ${value}`));
-                return value;
+                if (!validTargets.includes(value as (typeof validTargets)[number]))
+                    return {
+                        error: true,
+                        message: `Invalid value for target: ${value}`
+                    };
+                else return { error: false };
             }
         }
-    ] as const,
-    [] as const
-);
-reportCommand.action(async (_, { target }) => {
+    ],
+    args: []
+});
+reportCommand.action(async ({ target }) => {
     const files = await GitService.filesReport();
 
     switch (target) {

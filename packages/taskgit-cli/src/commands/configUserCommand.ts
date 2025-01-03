@@ -2,9 +2,9 @@ import { confirm, question } from '@guiurm/askly';
 import { ErrorHandler, GitService, GitServiceError } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const configUserCommand = genCommand(
-    'config-user',
-    [
+const configUserCommand = genCommand({
+    name: 'config-user',
+    options: [
         {
             name: 'name',
             optionType: 'string',
@@ -19,10 +19,10 @@ const configUserCommand = genCommand(
             alias: ['--email'],
             required: false
         }
-    ] as const,
-    [] as const
-);
-configUserCommand.action(async (_, { name, email }, argsP) => {
+    ],
+    args: []
+});
+configUserCommand.action(async ({ name, email }) => {
     if (!name) name = await question({ message: 'User name: ' });
     if (!email) email = await question({ message: 'User email: ' });
 
@@ -33,7 +33,6 @@ configUserCommand.action(async (_, { name, email }, argsP) => {
 
     if (await confirm('Is this correct?')) {
         console.log('\Updating user configuration...');
-        // await exeCommand(`git config user.name "${name}" && git config user.email "${email}"`);
         try {
             await GitService.setUser(name, email);
         } catch (error) {

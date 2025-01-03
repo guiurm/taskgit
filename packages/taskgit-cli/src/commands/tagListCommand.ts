@@ -1,16 +1,14 @@
 import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const tagListCommand = genCommand(
-    'tag-list',
-    [
+const tagListCommand = genCommand({
+    name: 'tag-list',
+    options: [
         { name: 'listLocal', flag: '-ll', alias: ['--list-local'], optionType: 'boolean', required: false },
         { name: 'listRemote', flag: '-lr', alias: ['--list-remote'], optionType: 'boolean', required: false },
         { name: 'list', flag: '-l', alias: ['--list'], optionType: 'boolean', required: false }
-        //
-    ] as const,
-    [] as const
-);
+    ]
+});
 
 tagListCommand.action(async (_, { list, listLocal, listRemote }) => {
     const uniqueOptions = [

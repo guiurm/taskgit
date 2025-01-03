@@ -1,19 +1,23 @@
 import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
-const tagRemoveCommand = genCommand('tag-remove', [
-    { name: 'tagName', flag: '-t', alias: ['--tag'], optionType: 'string', required: true },
-    {
-        name: 'remote',
-        flag: '-rem',
-        alias: ['--remote'],
-        optionType: 'string',
-        required: false,
-        customValidator: v => v || 'origin'
-    }
-]);
+const tagRemoveCommand = genCommand({
+    name: 'tag-remove',
+    options: [
+        { name: 'tagName', flag: '-t', alias: ['--tag'], optionType: 'string', required: true },
+        {
+            name: 'remote',
+            flag: '-rem',
+            alias: ['--remote'],
+            defaultValue: 'origin',
+            optionType: 'string',
+            required: false
+            //customTransformer: v => v || 'origin'
+        }
+    ]
+});
 
-tagRemoveCommand.action(async (_, { tagName, remote }) => {
+tagRemoveCommand.action(async ({ tagName, remote }) => {
     let message = '';
     if (!tagName) ErrorHandler.throw(new AppError('No tag name provided.'));
     const tags = await GitServiceTagger.listTagsNamesLocal();
