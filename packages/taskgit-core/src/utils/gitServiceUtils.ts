@@ -10,6 +10,10 @@ import { TFileListStatus } from '../types';
  * @throws {GitServiceError} If the command fails.
  */
 const exeCommand = (command: string, onError: (even: GitServiceError) => void | Promise<void> = () => {}) => {
+    command = escapeShellArg(command);
+
+    if (!isValidFilename(command)) ErrorHandler.throw(new GitServiceError('Invalid command', command));
+
     return new Promise<string>(resolve => {
         exec(command, async (error, stdout, _stderr) => {
             if (error) {
@@ -20,6 +24,28 @@ const exeCommand = (command: string, onError: (even: GitServiceError) => void | 
             resolve(stdout);
         });
     });
+};
+
+/**
+ * Escape a string to be used as an argument in a shell command.
+ * This function escapes double quotes, single quotes, and backslashes,
+ * and also escapes any dollar signs by prefixing them with a backslash.
+ * @param arg The string to escape.
+ * @returns The escaped string.
+ */
+const escapeShellArg = (arg: string): string => {
+    return arg.replace(/(["'\\])/g, '\\$1').replace(/\$/g, '\\$');
+};
+
+/**
+ * Verifica si un nombre de archivo es válido.
+ * Un nombre de archivo es válido si solo contiene letras, números, guiones, guiones bajos y puntos.
+ * @param filename El nombre de archivo a verificar.
+ * @returns `true` si el nombre de archivo es válido, `false` en caso contrario.
+ */
+const isValidFilename = (filename: string): boolean => {
+    const regex = /^[a-zA-Z0-9_\-\.]+$/; // Solo permite letras, números, guiones, guiones bajos y puntos
+    return regex.test(filename);
 };
 
 /**
