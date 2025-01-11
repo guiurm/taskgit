@@ -23,20 +23,35 @@ class GitServiceTagger {
         return await exeCommand(`git push --delete ${remote} ${name}`);
     }
 
-    public static async listTagsLocal() {
+    public static async listTagsLocal(): Promise<
+        {
+            tag: string;
+            commit: string;
+        }[]
+    > {
         const list = parseTagsList(await exeCommand('git show-ref --tags'));
 
-        return list.length === 0 ? undefined : list;
+        return list.length === 0 ? [] : list;
+    }
+
+    public static async tagExists(tag: string): Promise<boolean> {
+        const tags = await this.listTagsNamesLocal();
+        return tags.includes(tag);
     }
 
     public static async listTagsNamesLocal() {
         return (await exeCommand('git tag')).split('\n');
     }
 
-    public static async listTagsRemote() {
+    public static async listTagsRemote(): Promise<
+        {
+            tag: string;
+            commit: string;
+        }[]
+    > {
         const list = parseTagsList(await exeCommand('git ls-remote --tags'));
 
-        return list.length === 0 ? undefined : list;
+        return list.length === 0 ? [] : list;
     }
 }
 

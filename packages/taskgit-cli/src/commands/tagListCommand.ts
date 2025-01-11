@@ -10,7 +10,7 @@ const tagListCommand = genCommand({
     ]
 });
 
-tagListCommand.action(async (_, { list, listLocal, listRemote }) => {
+tagListCommand.action(async ({ list, listLocal, listRemote }) => {
     const uniqueOptions = [
         { option: listLocal, name: 'listLocal' },
         { option: listRemote, name: 'listRemote' },
@@ -26,14 +26,26 @@ tagListCommand.action(async (_, { list, listLocal, listRemote }) => {
         const command = uniqueOptions[0]?.name;
 
         switch (command) {
-            case 'listLocal':
+            case 'listLocal': {
                 console.log('Local tags:');
-                console.log((await GitServiceTagger.listTagsLocal()) ?? 'No local tags found.');
+                const tags = await GitServiceTagger.listTagsLocal();
+                console.log(
+                    tags.length === 0
+                        ? 'No local tags found.'
+                        : tags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n')
+                );
                 break;
-            case 'listRemote':
+            }
+            case 'listRemote': {
                 console.log('Remote tags:');
-                console.log((await GitServiceTagger.listTagsRemote()) ?? 'No remote tags found.');
+                const tags = await GitServiceTagger.listTagsRemote();
+                console.log(
+                    tags.length === 0
+                        ? 'No remote tags found.'
+                        : tags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n')
+                );
                 break;
+            }
             case 'list':
                 const [local, remote] = await Promise.all([
                     GitServiceTagger.listTagsLocal(),
@@ -41,9 +53,17 @@ tagListCommand.action(async (_, { list, listLocal, listRemote }) => {
                 ]);
 
                 console.log('Local tags:');
-                console.log(local ?? '  No local tags found.');
+                console.log(
+                    local.length === 0
+                        ? '  No local tags found.'
+                        : local.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n')
+                );
                 console.log('Remote tags:');
-                console.log(remote ?? '  No remote tags found.');
+                console.log(
+                    remote.length === 0
+                        ? '  No remote tags found.'
+                        : remote.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n')
+                );
 
                 break;
             case undefined:

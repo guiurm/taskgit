@@ -3,9 +3,8 @@ import { changelogCommand } from './changelogCommand';
 import { commitCommand } from './commitCommand';
 import { configUserCommand } from './configUserCommand';
 import { reportCommand } from './reportCommand';
-import { tagAddCommand } from './tagAddCommand';
+import { tagCommand } from './tagCommand';
 import { tagListCommand } from './tagListCommand';
-import { tagRemoveCommand } from './tagRemoveLocal';
 
 const commands = [
     commitCommand,
@@ -13,8 +12,7 @@ const commands = [
     configUserCommand,
     reportCommand,
     tagListCommand,
-    tagRemoveCommand,
-    tagAddCommand,
+    tagCommand,
     changelogCommand
 ];
 

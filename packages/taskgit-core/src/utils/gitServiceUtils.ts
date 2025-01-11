@@ -1,5 +1,5 @@
 import { exec } from 'node:child_process';
-import { ErrorHandler, GitServiceError } from '../error-handler';
+import { AppError, ErrorHandler, GitServiceError } from '../error-handler';
 import { TFileListStatus } from '../types';
 
 /**
@@ -9,10 +9,12 @@ import { TFileListStatus } from '../types';
  * @returns A promise that resolves with the result of the command execution.
  * @throws {GitServiceError} If the command fails.
  */
-const exeCommand = (command: string, onError: (even: GitServiceError) => void | Promise<void> = () => {}) => {
-    command = escapeShellArg(command);
-
-    if (!isValidFilename(command)) ErrorHandler.throw(new GitServiceError('Invalid command', command));
+const exeCommand = (
+    command: string | string[],
+    onError: (even: GitServiceError) => void | Promise<void> = () => {}
+) => {
+    if (Array.isArray(command)) command = command.map(transformCommandArg).join(' ');
+    else command = command.split(' ').map(transformCommandArg).join(' ');
 
     return new Promise<string>(resolve => {
         exec(command, async (error, stdout, _stderr) => {
@@ -27,25 +29,60 @@ const exeCommand = (command: string, onError: (even: GitServiceError) => void | 
 };
 
 /**
- * Escape a string to be used as an argument in a shell command.
- * This function escapes double quotes, single quotes, and backslashes,
- * and also escapes any dollar signs by prefixing them with a backslash.
- * @param arg The string to escape.
- * @returns The escaped string.
+ * Checks if a given string is a safe command argument.
+ *
+ * This function evaluates whether the input string contains only
+ * characters that are considered safe for use in shell commands,
+ * i.e., it does not contain any special characters that could
+ * alter the behavior of the shell command.
+ *
+ * @param arg The string to evaluate.
+ * @returns A boolean indicating if the string is safe (true) or not (false).
  */
-const escapeShellArg = (arg: string): string => {
-    return arg.replace(/(["'\\])/g, '\\$1').replace(/\$/g, '\\$');
+
+const isSafeCommandArg = (arg: string): boolean => {
+    if (typeof arg !== 'string') return false;
+    const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
+    return regex.test(arg);
 };
 
 /**
- * Verifica si un nombre de archivo es válido.
- * Un nombre de archivo es válido si solo contiene letras, números, guiones, guiones bajos y puntos.
- * @param filename El nombre de archivo a verificar.
- * @returns `true` si el nombre de archivo es válido, `false` en caso contrario.
+ * Transforms a command argument into a safe string that can be used in shell
+ * commands.
+ *
+ * This function splits the argument into individual words and checks if
+ * each word is a safe command argument. If a word is not safe, it is
+ * replaced with an empty string.
+ *
+ * If the argument was split into multiple words, the resulting array is
+ * joined back together with a space separator and enclosed in double
+ * quotes.
+ *
+ * @param arg The string to transform.
+ * @returns The transformed string.
  */
-const isValidFilename = (filename: string): boolean => {
-    const regex = /^[a-zA-Z0-9_\-\.]+$/; // Solo permite letras, números, guiones, guiones bajos y puntos
-    return regex.test(filename);
+const transformCommandArg = (arg: string): string => {
+    if (typeof arg !== 'string')
+        ErrorHandler.throw(
+            new AppError(
+                'An internal error has occurred. Please review your configuration or consult the documentation.'
+            )
+        );
+
+    let v = arg
+        .split(' ')
+        .map(a =>
+            isSafeCommandArg(a)
+                ? a
+                : (ErrorHandler.throw(
+                      new AppError(
+                          'An internal error has occurred. Please review your configuration or consult the documentation.'
+                      )
+                  ) ?? '')
+        );
+
+    if (v.length > 1) return ['"', v.join(' '), '"'].join('');
+    else return v.join('');
 };
 
 /**
@@ -65,9 +102,9 @@ const parseTagsList = (data: string) => {
 
             Array.from({ length: 15 }, (_, i) => tag[i] ?? ' ').join('');
 
-            return ` * ${tag} > ${commit}`;
-        })
-        .join('\n');
+            return { tag, commit };
+        });
+    //.join('\n');
 };
 
 /**
