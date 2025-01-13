@@ -14,7 +14,7 @@ import { TFileListStatus } from '../types';
  *                what to do.
  * @returns A promise that resolves with the output of the command as a string.
  */
-const exeCommand = (
+const exeCommand = async (
     command: string | string[],
     onError: (even: CommandExecutionError) => boolean | Promise<boolean> = () => false
 ) => {

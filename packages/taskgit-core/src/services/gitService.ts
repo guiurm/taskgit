@@ -11,9 +11,9 @@ class GitService {
      * @throws {GitServiceError} If the command fails.
      */
     public static async getUser() {
-        const data = await exeCommand('git config user.name && git config user.email');
+        const name = await exeCommand('git config user.name');
+        const email = await exeCommand('git config user.email');
 
-        const [name, email] = data.split('\n').map(l => l.trim());
         return { name, email, toString: () => `${name} <${email}>` };
     }
     public static async setUser(name: string, email: string) {
