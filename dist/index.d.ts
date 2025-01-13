@@ -1,32 +1,5 @@
-import * as fs from 'fs';
-
-declare class AppError extends Error {
-    readonly errorTracks: string[];
-    static readonly VERSION: any;
-    static readonly NAME: any;
-    static readonly VERSION_NAME: string;
-    readonly exitCode: number;
-    constructor(message: string, exitCode?: number);
-    get errorTrack(): string;
-    get lastTrack(): string;
-    get VERSION(): any;
-    get NAME(): any;
-    get VERSION_NAME(): string;
-}
-declare class GitServiceError extends AppError {
-    readonly command: string;
-    constructor(message: string, command: string);
-}
-declare class ExternalServiceError extends AppError {
-    readonly service: string;
-    constructor(message: string, service: string);
-}
-declare class ErrorHandler {
-    private static _subscriber;
-    static subscribe(subscriber: (error: AppError) => void): () => void;
-    static unsubscribe(subscriber: (error: AppError) => void): void;
-    static throw(error: AppError): void;
-}
+import { ExecException } from 'node:child_process';
+import { Stats } from 'node:fs';
 
 declare const TMP_DIR: string;
 declare const TMP_PATCH_DIR: string;
@@ -34,75 +7,9 @@ declare const NAME: any;
 declare const VERSION: any;
 declare const VERSION_NAME: string;
 declare const IS_DEV: boolean;
+declare const IS_PROD: boolean;
 declare const IS_TEST: boolean;
 declare const LOG_SPLITTER = "_$ \u00F2 $_";
-declare const COMMIT_STANDARD_TYPES: readonly [{
-    readonly icon: "🚀";
-    readonly name: "feat";
-    readonly description: "Agregar una nueva funcionalidad o característica al proyecto.";
-}, {
-    readonly icon: "🐛";
-    readonly name: "fix";
-    readonly value: "fix";
-    readonly description: "Corregir un error o bug en el código.";
-}, {
-    readonly icon: "📚";
-    readonly name: "docs";
-    readonly description: "Actualizar o modificar la documentación del proyecto (README, comentarios, etc.).";
-}, {
-    readonly icon: "🎨";
-    readonly name: "style";
-    readonly description: "Cambios en el formato o estilo del código, sin afectar la funcionalidad.";
-}, {
-    readonly icon: "♻️ ";
-    readonly name: "refactor";
-    readonly description: "Reestructuración del código para mejorar su calidad o rendimiento, sin cambiar su comportamiento.";
-}, {
-    readonly icon: "⚡";
-    readonly name: "performance";
-    readonly description: "Mejoras en el rendimiento del proyecto sin afectar su funcionalidad.";
-}, {
-    readonly icon: "🧪";
-    readonly name: "test";
-    readonly description: "Añadir o modificar pruebas (unitarias, de integración) para mejorar la cobertura del código.";
-}, {
-    readonly icon: "🧹";
-    readonly name: "chore";
-    readonly description: "Tareas de mantenimiento, configuración o administración, que no afectan la funcionalidad del proyecto.";
-}, {
-    readonly icon: "🏗️ ";
-    readonly name: "build";
-    readonly description: "Cambios relacionados con la construcción del proyecto, como dependencias, compilación o configuración.";
-}, {
-    readonly icon: "⚙️ ";
-    readonly name: "ci";
-    readonly description: "Cambios en la configuración de integración continua o en los pipelines de CI/CD.";
-}, {
-    readonly icon: "🚀";
-    readonly name: "release";
-    readonly description: "Realizar un lanzamiento o actualización de la versión del proyecto.";
-}, {
-    readonly icon: "❌";
-    readonly name: "removed";
-    readonly description: "Eliminar funcionalidades obsoletas o innecesarias.";
-}, {
-    readonly icon: "📉";
-    readonly name: "deprecated";
-    readonly description: "Marcar funcionalidades como obsoletas y que serán eliminadas en el futuro.";
-}, {
-    readonly icon: "🔒";
-    readonly name: "security";
-    readonly description: "Cambios relacionados con la seguridad, como actualizaciones para mitigar vulnerabilidades.";
-}, {
-    readonly icon: "⏪";
-    readonly name: "revert";
-    readonly value: "revert";
-    readonly description: "Deshacer cambios realizados en un commit anterior.";
-}, {
-    readonly icon: "⚒️ ";
-    readonly name: "wip";
-    readonly description: "Trabajo en progreso, commit incompleto que refleja cambios aún en desarrollo.";
-}];
 
 type CacheFile = {
     cacheFilePath: string;
@@ -118,14 +25,38 @@ declare class CacheStore {
     private static instance;
     private files;
     constructor();
+    /**
+     * Creates a new patch cache from the given information.
+     *
+     * @param {object} file
+     * @param {string} file.originalDiff
+     * @param {string} file.acceptedDiff
+     * @param {string} [file.ignoredDiff]
+     * @param {string} file.filePath
+     * @returns {string} The hash of the created cache
+     */
     createPatchCache(file: {
         originalDiff: string;
         acceptedDiff: string;
         ignoredDiff?: string;
         filePath: string;
     }): string;
+    /**
+     * Returns the cache stored with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to retrieve
+     * @returns {FileChanges} The cache or undefined if it does not exist
+     */
     getFileCache(hash: string): FileChanges;
-    clearFileCache(hash: string): false | undefined;
+    /**
+     * Clears the file cache associated with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to clear.
+     * @returns {boolean} - Returns false if the cache does not exist.
+     * Deletes the cached files for the original state, accepted changes,
+     * and ignored changes if they exist.
+     */
+    clearFileCache(hash: string): boolean;
 }
 
 type TFileListStatus = {
@@ -133,7 +64,7 @@ type TFileListStatus = {
     modified: string[];
     deleted: string[];
 };
-type TGitDiffOutputFileConf = {
+type TDiffOutputFileConf = {
     file: string;
     fileName: string;
     index: string;
@@ -277,8 +208,73 @@ declare class ChangeLogService {
         outputFile?: string;
         version: string;
     }): void;
+    /**
+     * Writes a section in the markdown document for a given list of commits.
+     *
+     * @param {GitLogCommitInfo[]} commits - An array of commit objects to be included in the section.
+     * @param {string} title - The title of the section to be added to the markdown document.
+     * @param {MarkdownService} md - The markdown service instance used to create and modify the markdown content.
+     *
+     * @returns {void}
+     */
     private static _writeSection;
 }
+
+declare class AppError extends Error {
+    readonly errorTracks: string[];
+    static readonly VERSION: any;
+    static readonly NAME: any;
+    static readonly VERSION_NAME: string;
+    readonly exitCode: number;
+    constructor(message: string, exitCode?: number);
+    get errorTrack(): string;
+    get lastTrack(): string;
+    get VERSION(): any;
+    get NAME(): any;
+    get VERSION_NAME(): string;
+}
+declare class FilesReportServiceError extends AppError {
+    readonly command: string;
+    constructor(message: string, command: string);
+}
+declare class ExternalServiceError extends AppError {
+    readonly service: string;
+    constructor(message: string, service: string);
+}
+type CommandExecutionErrorConstructor = {
+    message: string;
+    command: string;
+    error: ExecException;
+    stdout: string;
+    stderr: string;
+};
+declare class CommandExecutionError extends AppError {
+    readonly command: string;
+    readonly error: ExecException;
+    readonly stdout: string;
+    readonly stderr: string;
+    constructor({ command, error, message, stderr, stdout }: CommandExecutionErrorConstructor);
+}
+declare class ErrorHandler {
+    private static _subscriber;
+    static subscribe(subscriber: (error: AppError) => void): () => void;
+    static unsubscribe(subscriber: (error: AppError) => void): void;
+    static throw(error: AppError): void;
+}
+
+/**
+ * Executes a command and returns the result as a promise.
+ *
+ * @param command The command to execute. Can be a string or an array of strings.
+ * @param onError A callback that will be called if the command execution fails.
+ *                If the callback returns true, the method will throw an error.
+ *                If it returns false or nothing, the method will return the error
+ *                as a CommandExecutionError. If the callback returns a promise,
+ *                the method will wait for the promise to resolve before deciding
+ *                what to do.
+ * @returns A promise that resolves with the output of the command as a string.
+ */
+declare const exeCommand: (command: string | string[], onError?: (even: CommandExecutionError) => boolean | Promise<boolean>) => Promise<string>;
 
 declare class FileServiceError extends Error {
     readonly file: string;
@@ -345,10 +341,10 @@ declare const mf: (originPath: string, destinationPath: string, cwd?: string) =>
  * Gets the stats of a file at the given path.
  *
  * @param {string} path - The path to the file to get the stats from.
- * @returns {import("fs").Stats} The stats of the file.
+ * @returns {import("node:fs").Stats} The stats of the file.
  * @throws {FileServiceError} If the file does not exist at the given path.
  */
-declare const getFileStat: (path: string) => fs.Stats;
+declare const getFileStat: (path: string) => Stats;
 /**
  * Checks if the given path is a file.
  * @param {string} path - The path to check.
@@ -362,7 +358,75 @@ declare const isFile: (path: string) => boolean;
  */
 declare const isDirectory: (path: string) => boolean;
 
-declare class GitDiffService {
+declare class ConfigService {
+    /**
+     * Get the user configuration from Git.
+     *
+     * @returns A promise that resolves with an object containing the user name and email.
+     * @throws {FilesReportServiceError} If the command fails.
+     */
+    static getUser(): Promise<{
+        name: string;
+        email: string;
+        toString: () => string;
+    }>;
+    /**
+     * Set the user configuration in Git.
+     *
+     * @param name The user's name to set in the Git configuration.
+     * @param email The user's email to set in the Git configuration.
+     * @returns A promise that resolves when the user configuration is successfully set.
+     * @throws {FilesReportServiceError} If the command fails.
+     */
+    static setUser(name: string, email: string): Promise<void>;
+}
+
+declare class DiffOutputFile {
+    file: string;
+    fileName: string;
+    index: string;
+    aFile: string;
+    bFile: string;
+    hunks: string[];
+    acceptedHunks: string[];
+    ignoredHunks: string[];
+    /**
+     * Constructor for DiffOutputFile.
+     *
+     * @param {TDiffOutputFileConf} conf - Configuration object for the DiffOutputFile.
+     *
+     * The configuration object should contain the following properties:
+     * - file: The file path of the file.
+     * - fileName: The name of the file.
+     * - index: The index of the file.
+     * - aFile: The "a/" file name.
+     * - bFile: The "b/" file name.
+     * - hunks: An array of hunk strings.
+     */
+    constructor(conf: TDiffOutputFileConf);
+    /**
+     * Generates a diff patch string for the file, containing all hunks.
+     *
+     * @returns {string} A string representing the diff patch for the file.
+     */
+    getTotalDiffPatch(): string;
+    /**
+     * Generates a diff patch string for the accepted hunks of a file.
+     *
+     * @returns {string | null} A string representing the diff patch for the accepted hunks
+     * of the file, or null if there are no accepted hunks.
+     */
+    getAcceptedDiffPatch(): string | null;
+    /**
+     * Generates a diff patch string for the ignored hunks of a file.
+     *
+     * @returns {string | null} A string representing the diff patch for the ignored hunks
+     * of the file, or null if there are no ignored hunks.
+     */
+    getIgnoredDiffPatch(): string | null;
+}
+
+declare class DiffService {
     /**
      * Execute the git diff command with the provided options.
      * @param options Options for the git diff command.
@@ -374,35 +438,21 @@ declare class GitDiffService {
      * @param options Options for the git diff command.
      * @returns The built git diff command.
      */
-    private static buildDiffCommand;
+    private static _buildDiffCommand;
     /**
      * Parses the output of a git diff command and extracts information about the files and their hunks.
      *
      * @param options Options for the git diff command.
-     * @returns An array of GitDiffOutputFile objects, each containing details about a file and its hunks.
+     * @returns An array of DiffOutputFile objects, each containing details about a file and its hunks.
      *
-     * The function splits the diff output into rows and iterates through them. It creates a new GitDiffOutputFile
+     * The function splits the diff output into rows and iterates through them. It creates a new DiffOutputFile
      * object for each file detected in the diff output, collecting its hunks. Hunks are added to the current file
      * object until a new file is encountered.
      */
-    static parseGitDiffOutput(options: GitDiffOptions): Promise<GitDiffOutputFile[]>;
-}
-declare class GitDiffOutputFile {
-    file: string;
-    fileName: string;
-    index: string;
-    aFile: string;
-    bFile: string;
-    hunks: string[];
-    acceptedHunks: string[];
-    ignoredHunks: string[];
-    constructor(conf: TGitDiffOutputFileConf);
-    getTotalDiffPatch(): string;
-    getAcceptedDiffPatch(): string | null;
-    getIgnoredDiffPatch(): string | null;
+    static parseGitDiffOutput(options: GitDiffOptions): Promise<DiffOutputFile[]>;
 }
 
-declare class GitServiceFilesReport {
+declare class FilesReport {
     readonly staged: TFileListStatus;
     readonly unstaged: TFileListStatus;
     readonly untracked: string[];
@@ -418,19 +468,7 @@ declare class GitServiceFilesReport {
     totalReport(): string;
 }
 
-declare class GitService {
-    /**
-     * Get the user configuration from Git.
-     *
-     * @returns A promise that resolves with an object containing the user name and email.
-     * @throws {GitServiceError} If the command fails.
-     */
-    static getUser(): Promise<{
-        name: string;
-        email: string;
-        toString: () => string;
-    }>;
-    static setUser(name: string, email: string): Promise<void>;
+declare class FilesReportService {
     /**
      * Get a list of staged files from Git.
      *
@@ -463,7 +501,21 @@ declare class GitService {
      * @returns A promise that resolves with an object containing the file lists.
      * @throws {ExternalServiceError} If the command fails.
      */
-    static filesReport(): Promise<GitServiceFilesReport>;
+    static filesReport(): Promise<FilesReport>;
+    /**
+     * Get a list of Git commits.
+     *
+     * @param args An object with three optional properties: `from`, `to`, and `branch`.
+     * `from` and `to` specify the range of commits to retrieve. If `from` is specified but `to` is not, the
+     * function will retrieve all commits newer than `from`. If `to` is specified but `from` is not, the
+     * function will retrieve all commits older than `to`.
+     * `branch` specifies the branch from which to retrieve commits. If not specified, the function will use
+     * the current branch.
+     *
+     * @returns A promise that resolves with an array of `GitLogCommitInfo` objects, each containing the
+     * commit hash, author name, author email, commit date, commit title, and commit body.
+     * @throws {ExternalServiceError} If the command fails.
+     */
     static log(args?: {
         from?: string;
         to?: string;
@@ -471,18 +523,84 @@ declare class GitService {
     }): Promise<GitLogCommitInfo[]>;
 }
 
-declare class GitServiceTagger {
+declare class TaggerService {
+    /**
+     * Creates an annotated tag on the local repository.
+     *
+     * @param {Object} param0 The parameters for creating the annotated tag.
+     * @param {string} param0.name The name of the tag to create.
+     * @param {string} [param0.message] An optional message for the annotated tag.
+     * @returns {Promise<string>} The result of the command.
+     */
     static createAnnotatedTag({ message, name }: {
         name: string;
         message?: string;
     }): Promise<string>;
+    /**
+     * Creates a lightweight tag on the local repository.
+     *
+     * @param {string} name The name of the tag to create.
+     * @returns {Promise<string>} The result of the command.
+     */
     static createLightweightTag(name: string): Promise<string>;
+    /**
+     * Deletes a tag from the local repository.
+     *
+     * @param {string} name The name of the tag to delete.
+     * @returns {Promise<string>} The result of the command.
+     */
     static deleteTag(name: string): Promise<string>;
+    /**
+     * Pushes a tag to the remote repository.
+     *
+     * @param {string} name The name of the tag to push.
+     * @returns {Promise<string>} The result of the command.
+     */
     static pushTag(name: string): Promise<string>;
+    /**
+     * Deletes a tag from the remote repository.
+     *
+     * @param {string} name The name of the tag to delete.
+     * @param {string} [remote='origin'] The name of the remote repository to delete the tag from.
+     * @returns {Promise<string>} The result of the command.
+     */
     static deleteRemoteTag(name: string, remote?: string): Promise<string>;
-    static listTagsLocal(): Promise<string | undefined>;
+    /**
+     * Lists all tags in the local repository.
+     *
+     * @returns {Promise<Array<{tag: string, commit: string}>>} A list of tags, where each tag is an object with a
+     * `tag` property containing the tag name, and a `commit` property containing the commit hash the tag points to.
+     * If there are no tags in the local repository, an empty list is returned.
+     */
+    static listTagsLocal(): Promise<{
+        tag: string;
+        commit: string;
+    }[]>;
+    /**
+     * Checks if a tag exists in the local repository.
+     *
+     * @param tag The name of the tag to check.
+     *
+     * @returns {Promise<boolean>} A promise that resolves to true if the tag exists, false otherwise.
+     */
+    static tagExists(tag: string): Promise<boolean>;
+    /**
+     * Lists all tag names in the local repository.
+     *
+     * @returns {Promise<string[]>} A list of tag names, or an empty list if there are no tags in the local repository.
+     */
     static listTagsNamesLocal(): Promise<string[]>;
-    static listTagsRemote(): Promise<string | undefined>;
+    /**
+     * Lists all tags in the remote repository.
+     *
+     * @returns {Promise<Array<{tag: string, commit: string}>>} A list of tags, where each tag is an object with a
+     * `tag` property containing the tag name, and a `commit` property containing the commit hash the tag points to.
+     * If there are no tags in the remote repository, an empty list is returned.
+     */
+    static listTagsRemote(): Promise<{
+        tag: string;
+        commit: string;
+    }[]>;
 }
 
 declare class MarkdownService {
@@ -558,14 +676,133 @@ declare class MarkdownService {
     addText(text: string): this;
 }
 
-/**
- * Execute a command in the shell and return the result as a promise.
- *
- * @param command The command to execute.
- * @returns A promise that resolves with the result of the command execution.
- * @throws {GitServiceError} If the command fails.
- */
-declare const exeCommand: (command: string, onError?: (even: GitServiceError) => void | Promise<void>) => Promise<string>;
+type TAllVersionOptions = {
+    type?: 'major' | 'minor' | 'patch' | 'premajor' | 'preminor' | 'prepatch' | 'prerelease' | 'from-git';
+    version?: string;
+    useCommitHooks?: boolean;
+    createTag?: boolean;
+    customMessage?: string;
+    /**
+     * Custom pre id for the pre*
+     */
+    preid?: string;
+};
+type TExactVersionOptions = Pick<TAllVersionOptions, 'version' | 'useCommitHooks' | 'createTag' | 'customMessage'>;
+type TPreVersionOptions = Pick<TAllVersionOptions, 'preid' | 'useCommitHooks' | 'createTag' | 'customMessage'>;
+type TVersionOptions = Pick<TAllVersionOptions, 'useCommitHooks' | 'createTag' | 'customMessage'>;
+declare class NpmService {
+    /**
+     * Runs the npm version command with the given options.
+     * @param data
+     * @returns The output of the command as a string.
+     * @throws AppError if type or version is not provided.
+     * @throws AppError if both type and version are provided.
+     */
+    static version(data: TAllVersionOptions): Promise<string>;
+    /**
+     * Increases the version exactly to the given version.
+     * @param data
+     * @returns The output of the command as a string.
+     * @throws AppError if version is not provided.
+     */
+    static exactVersion({ createTag, customMessage, useCommitHooks, version }: TExactVersionOptions): Promise<string>;
+    /**
+     * Increase the prerelease patch version.
+     *
+     * @example
+     * await NpmService.prePatch();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {string} [options.preid] - The prerelease identifier to use.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static prePatch({ createTag, customMessage, preid, useCommitHooks }: TPreVersionOptions): Promise<string>;
+    /**
+     * Increase the prerelease minor version.
+     *
+     * @example
+     * await NpmService.preMinor();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {string} [options.preid] - The prerelease identifier to use.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static preMinor({ createTag, customMessage, preid, useCommitHooks }: TPreVersionOptions): Promise<string>;
+    /**
+     * Increase the prerelease major version.
+     *
+     * @example
+     * await NpmService.preMajor();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {string} [options.preid] - The prerelease identifier to use.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static preMajor({ createTag, customMessage, preid, useCommitHooks }: TPreVersionOptions): Promise<string>;
+    /**
+     * Increase the prerelease version.
+     *
+     * @example
+     * await NpmService.preRelease();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {string} [options.preid] - Custom pre identifier for the prerelease.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static preRelease({ createTag, customMessage, preid, useCommitHooks }: TPreVersionOptions): Promise<string>;
+    /**
+     * Increase the major version.
+     *
+     * @example
+     * await NpmService.major();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static major({ createTag, customMessage, useCommitHooks }: TVersionOptions): Promise<string>;
+    /**
+     * Increase the minor version.
+     *
+     * @example
+     * await NpmService.minor();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static minor({ createTag, customMessage, useCommitHooks }: TVersionOptions): Promise<string>;
+    /**
+     * Increase the patch version.
+     *
+     * @example
+     * await NpmService.patch();
+     *
+     * @param {Object} [options]
+     * @param {boolean} [options.createTag=true] - Whether to create a new tag from the new version.
+     * @param {string} [options.customMessage] - The message to use when creating a new tag.
+     * @param {boolean} [options.useCommitHooks=true] - Whether to use the commit hooks.
+     * @returns {Promise<string>}
+     */
+    static patch({ createTag, customMessage, useCommitHooks }: TVersionOptions): Promise<string>;
+}
+
 /**
  * Parse a string containing a list of tags with their commit hashes and
  * return a string with each tag in a separate line, indented by two spaces.
@@ -574,7 +811,10 @@ declare const exeCommand: (command: string, onError?: (even: GitServiceError) =>
  * @param data The string to parse.
  * @returns A string with the parsed list of tags.
  */
-declare const parseTagsList: (data: string) => string;
+declare const parseTagsList: (data: string) => {
+    tag: string;
+    commit: string;
+}[];
 /**
  * Process a string containing a list of files with their status (from Git)
  * and return an object with three properties: added, modified and deleted.
@@ -586,4 +826,4 @@ declare const parseTagsList: (data: string) => string;
  */
 declare const processFiles: (data: string) => TFileListStatus;
 
-export { AppError, COMMIT_STANDARD_TYPES, type CacheFile, CacheStore, ChangeLogService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, type GitDiffOptions, GitDiffOutputFile, GitDiffService, type GitLogCommitInfo, GitService, GitServiceError, GitServiceFilesReport, GitServiceTagger, IS_DEV, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, type TFileListStatus, type TGitDiffOutputFileConf, TMP_DIR, TMP_PATCH_DIR, VERSION, VERSION_NAME, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, parseTagsList, processFiles, resolvePath, rf, sha1, wf };
+export { AppError, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, type TDiffOutputFileConf, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, TaggerService, VERSION, VERSION_NAME, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, parseTagsList, processFiles, resolvePath, rf, sha1, wf };
