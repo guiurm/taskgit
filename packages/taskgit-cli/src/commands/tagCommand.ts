@@ -1,11 +1,11 @@
-import { GitServiceTagger } from '@guiurm/taskgit-core';
+import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const tagCommand = genCommand({
     name: 'tag',
     options: [
         {
-            name: 'add',
+            name: 'tagName',
             flag: '-a',
             alias: ['--add'],
             optionType: 'string',
@@ -31,43 +31,84 @@ const tagCommand = genCommand({
             alias: ['--remote'],
             optionType: 'string',
             required: false
-        }
-        /*{ name: 'listLocal', flag: '-ll', alias: ['--list-local'], optionType: 'boolean', required: false },
+        },
+        { name: 'listLocal', flag: '-ll', alias: ['--list-local'], optionType: 'boolean', required: false },
         { name: 'listRemote', flag: '-lr', alias: ['--list-remote'], optionType: 'boolean', required: false },
-        { name: 'list', flag: '-l', alias: ['--list'], optionType: 'boolean', required: false }*/
-    ]
+        { name: 'list', flag: '-l', alias: ['--list'], optionType: 'boolean', required: false }
+    ] as const
 });
 
-tagCommand.action(async ({ add, message, remove, remote }) => {
-    const optionsInCompatible = [add, remove].filter(Boolean).length > 1;
+tagCommand.action(async ({ tagName, message, remove, remote, list, listLocal, listRemote }) => {
+    const optionsList = [
+        ...[
+            { name: 'add', value: tagName },
+            { name: 'remove', value: remove }
+        ].filter(({ value: v }) => typeof v === 'string'),
+        ...[
+            { name: 'list', value: list },
+            { name: 'listLocal', value: listLocal },
+            { name: 'listRemote', value: listRemote }
+        ].filter(({ value: v }) => v === true)
+    ];
+
+    if (optionsList.length > 1)
+        ErrorHandler.throw(
+            new AppError(
+                `\n > Error: The options "${optionsList.map(item => item.name).join(', ')}" provided are incompatible.\n` +
+                    `   Please check the command and ensure that the options you are using do not conflict with each other. For more information, use the '--help' flag.\n`
+            )
+        );
 
     let res: string = '';
 
-    const tagsList = await GitServiceTagger.listTagsLocal();
+    const localTags = await GitServiceTagger.listTagsLocal();
+    const remoteTags = await GitServiceTagger.listTagsRemote();
 
-    const existTag = tagsList.find(({ tag }) => tag === add);
+    const existTag = localTags.find(({ tag }) => tag === tagName);
 
-    if (add) {
-        if (!message && !existTag)
-            res = await GitServiceTagger.createLightweightTag(add).then(() => `\n > 'New light tag added!: ${add}'\n`);
-        else if (message && !existTag)
-            res = await GitServiceTagger.createAnnotatedTag({ name: add, message }).then(
-                () => `\n > 'New annotated tag added!: ${add}'\n`
-            );
+    switch (optionsList[0].name) {
+        case 'add': {
+            if (!message && !existTag)
+                res = await GitServiceTagger.createLightweightTag(tagName as string).then(
+                    () => `\n > 'New light tag added!: ${tagName}'\n`
+                );
+            else if (message && !existTag)
+                res = await GitServiceTagger.createAnnotatedTag({ name: tagName as string, message }).then(
+                    () => `\n > 'New annotated tag added!: ${tagName}'\n`
+                );
 
-        if (remote) {
-            if (existTag)
-                console.warn(`\n > Tag ${add} already exists locally at ${existTag.commit}, trying to push ${remote}!`);
-            console.log(`\n > Pushing tag to remote ${remote}...`);
-            await GitServiceTagger.pushTag(add);
-            res += `\n > Tag pushed to remote ${remote}!\n`;
+            if (remote) {
+                if (existTag)
+                    console.warn(
+                        `\n > Tag ${tagName} already exists locally at ${existTag.commit}, trying to push ${remote}!`
+                    );
+                console.log(`\n > Pushing tag to remote ${remote}...`);
+
+                res += `\n > Remote ${remote}:\n   ${await GitServiceTagger.pushTag(tagName as string)}\n\n`;
+            }
+            break;
         }
-    } else if (remove) {
-        if (!existTag) console.warn(`\n > Tag ${remove} does not exist locally!`);
-        else res = 'Tag removed!: ' + (await GitServiceTagger.deleteTag(remove));
-        if (remote) {
-            console.log(`\n > Pushing changes to remote ${remote}...`);
-            res += `Tag removed from '${remote}'!: ${await GitServiceTagger.deleteRemoteTag(remove, remote)}`;
+        case 'remove': {
+            if (!existTag) console.warn(`\n > Tag ${remove} does not exist locally!`);
+            else res = 'Tag removed!: ' + (await GitServiceTagger.deleteTag(remove as string));
+            if (remote) {
+                console.log(`\n > Pushing changes to remote ${remote}...`);
+                const commandRes = await GitServiceTagger.deleteRemoteTag(remove as string, remote);
+                res += `Tag removed from '${remote}'!: ${commandRes}`;
+            }
+        }
+        case 'list': {
+            res = ' > Local tags:\n' + localTags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n') + '\n\n';
+            res += ' > Remote tags:\n' + remoteTags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n');
+            break;
+        }
+        case 'listLocal': {
+            res = 'Local tags:\n' + localTags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n');
+            break;
+        }
+        case 'listRemote': {
+            res = 'Remote tags:\n' + remoteTags.map(({ tag, commit }) => ` * ${commit} ${tag}`).join('\n');
+            break;
         }
     }
 

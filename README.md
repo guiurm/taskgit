@@ -5,9 +5,7 @@
 - **`commit`**: Create a new commit with a standardized message.
 - **`config-user`**: Configure the user's name and email address.
 - **`report`**: Generate a report of the commits made.
-- **`tag-add`**: Add a new tag to a commit.
-- **`tag-list`**: List all available tags.
-- **`tag-remove`**: Remove an existing tag.
+- **`tag`**: Manage git tags.
 - **`add-diff`**: Add to stage hunk of files, similar to git add -p.
 - **`changelog`**: Generates a changelog file based on a list of Git commits.
 
@@ -23,7 +21,7 @@ The `commit` command is used to create a new commit with a standardized message.
 Example usage:
 
 ```bash
-$ taskgit commit -t feat -m "Add new functionality"
+taskgit commit -t feat -m "Add new functionality"
 ```
 
 ## Config-User Command
@@ -36,7 +34,7 @@ The `config-user` command is used to configure the user's name and email address
 Example usage:
 
 ```bash
-$ taskgit config-user -n "John Doe" -e "john.doe@example.com"
+taskgit config-user -n "John Doe" -e "john.doe@example.com"
 ```
 
 ## Report Command
@@ -50,42 +48,44 @@ Example usage:
 _list all reports_
 
 ```bash
-$ taskgit report
+taskgit report
 ```
 
 _list staged files_
 
 ```bash
-$ taskgit report -t staged
+taskgit report -t staged
 ```
 
 _list unstaged files_
 
 ```bash
-$ taskgit report -t unstaged
+taskgit report -t unstaged
 ```
 
 _list untracked files_
 
 ```bash
-$ taskgit report -t untracked
+taskgit report -t untracked
 ```
 
-## Tag-Add Command
+## Tag Command
 
-The `tag-add` command is used to add a new tag to a commit. It has the following options:
+The `tag` command can be used has the following options:
 
-- **`-t`** or **`--tag`**: The name of the tag. This option is required.
-- **`-m`** or **`--message`**: The message of the tag. This option is optional.
-  Example usage:
+### Add a new tag
+
+- **`-a <tag_name>`** or **`--add <tag_name>`**: The name of the tag. This option is required.
+- **`-m <tag_message>`** or **`--message <tag_message>`**: The message of the tag. This option is optional. _(Optional)_
+- **`-r <remote>`** or **`--remote <remote>`**: The remote to update with tag info. _(Optional)_
+
+Example usage:
 
 ```bash
-$ taskgit tag-add -t v1.0.0 -m "Initial release"
+taskgit tag -a v1.0.0 -m "Initial release" -r origin
 ```
 
-## Tag-List Command
-
-The `tag-list` command is used to list all available tags. It has no options.
+### List tags
 
 **All of this options are mutually exclusive**
 
@@ -95,20 +95,18 @@ The `tag-list` command is used to list all available tags. It has no options.
   Example usage:
 
 ```bash
-$ taskgit tag-list
+taskgit tag -l
 ```
 
-## Tag-Remove Command
+### Delete tags
 
-The `tag-remove` command is used to remove an existing tag. It has the following options:
-
-- **`-t <tag_name>`** or **`--tag <tag_name>`**: The name of the tag. This option is required.
-- **`-rem <remote>`** or **`--remote <remote>`**: Whether to remove the tag from the remote repository. This option is optional. By deffault the value of this option is _`origin`_
+- **`-d <tag_name>`** or **`--remove <tag_name>`** or **`--remove <delete>`**: The name of the tag. This option is required.
+- **`-r <remote>`** or **`--remote <remote>`**: Whether to remove the tag from the remote repository. This option is optional. By deffault the value of this option is _`origin`_
 
 Example usage:
 
 ```bash
-$ taskgit tag-remove -t v1.0.0 -rem
+taskgit tag -d v1.0.0 -r origin
 ```
 
 ## Add-diff Command
@@ -120,22 +118,22 @@ The `add-diff` command is used to add a diff to a commit. It has the following o
 Example usage:
 
 ```bash
-$ taskgit add-diff -f path/to/file.txt
+taskgit add-diff -f path/to/file.txt
 ```
 
-# changelog command
+## changelog command
 
 The `changelog` command generates a changelog file based on a list of Git commits.
 
-## Options
+### Options
 
 - **`-f`** or **`--from`**: The commit from which the changelog will be generated. This option is optional.
 - **`-t`** or **`--to`**: The commit to which the changelog will be generated. This option is optional.
 - **`-b`** or **`--branch`**: The branch from which the changelog will be generated. This option is optional.
 - **`<outputFile>`**: The name of the output file for the changelog. This parameter is mandatory.
 
-## Usage example
+### Usage example
 
 ```bash
-$ taskgit changelog -f <commit_from> -t <commit_to> -b <branch> <outputFile>
+taskgit changelog -f <commit_from> -t <commit_to> -b <branch> <outputFile>
 ```

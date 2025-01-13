@@ -45,6 +45,7 @@ diffPickCommand.action(async ({ file }) => {
         await exeCommand(`git checkout ${fileDiff.fileName}`);
         await exeCommand(`git apply ${file.acceptedChanges.cacheFilePath}`, async () => {
             await exeCommand(`git apply ${file.originalState.cacheFilePath}`);
+            return true;
         });
         await exeCommand(`git add ${fileDiff.fileName}`);
         if (file.ignoredChanges) await exeCommand(`git apply ${file.ignoredChanges.cacheFilePath}`);

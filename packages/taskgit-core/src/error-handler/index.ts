@@ -1,3 +1,4 @@
+import { ExecException } from 'node:child_process';
 import { NAME, VERSION, VERSION_NAME } from '../globals';
 
 class AppError extends Error {
@@ -58,6 +59,29 @@ class ExternalServiceError extends AppError {
     }
 }
 
+type CommandExecutionErrorConstructor = {
+    message: string;
+    command: string;
+    error: ExecException;
+    stdout: string;
+    stderr: string;
+};
+class CommandExecutionError extends AppError {
+    public readonly command: string;
+    public readonly error: ExecException;
+    public readonly stdout: string;
+    public readonly stderr: string;
+
+    constructor({ command, error, message, stderr, stdout }: CommandExecutionErrorConstructor) {
+        super(message, 1);
+        this.name = 'CommandExecutionError';
+        this.command = command;
+        this.error = error;
+        this.stderr = stderr;
+        this.stdout = stdout;
+    }
+}
+
 class ErrorHandler {
     private static _subscriber: ((error: AppError) => void)[] = [];
 
@@ -80,4 +104,11 @@ class ErrorHandler {
     }
 }
 
-export { AppError, ErrorHandler, ExternalServiceError, GitServiceError };
+export {
+    AppError,
+    CommandExecutionError,
+    ErrorHandler,
+    ExternalServiceError,
+    GitServiceError,
+    type CommandExecutionErrorConstructor
+};

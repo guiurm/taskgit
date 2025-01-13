@@ -1,29 +1,39 @@
 import { exec } from 'node:child_process';
-import { AppError, ErrorHandler, GitServiceError } from '../error-handler';
+import { AppError, CommandExecutionError, ErrorHandler } from '../error-handler';
 import { TFileListStatus } from '../types';
 
 /**
- * Execute a command in the shell and return the result as a promise.
+ * Executes a command and returns the result as a promise.
  *
- * @param command The command to execute.
- * @returns A promise that resolves with the result of the command execution.
- * @throws {GitServiceError} If the command fails.
+ * @param command The command to execute. Can be a string or an array of strings.
+ * @param onError A callback that will be called if the command execution fails.
+ *                If the callback returns true, the method will throw an error.
+ *                If it returns false or nothing, the method will return the error
+ *                as a CommandExecutionError. If the callback returns a promise,
+ *                the method will wait for the promise to resolve before deciding
+ *                what to do.
+ * @returns A promise that resolves with the output of the command as a string.
  */
 const exeCommand = (
     command: string | string[],
-    onError: (even: GitServiceError) => void | Promise<void> = () => {}
+    onError: (even: CommandExecutionError) => boolean | Promise<boolean> = () => false
 ) => {
     if (Array.isArray(command)) command = command.map(transformCommandArg).join(' ');
-    else command = command.split(' ').map(transformCommandArg).join(' ');
+    else {
+        const regex = /"[^"]*"|[^ ]+/g;
+        const marches = command.match(regex);
+        if (marches !== null) command = marches.map(transformCommandArg).join(' ');
+        else command = transformCommandArg(command);
+    }
 
     return new Promise<string>(resolve => {
-        exec(command, async (error, stdout, _stderr) => {
+        exec(command, async (error, stdout, stderr) => {
+            const mssg = stdout.length > 0 ? stdout : stderr;
             if (error) {
-                const e = new GitServiceError(_stderr, command);
-                await onError(e);
-                ErrorHandler.throw(e);
+                const e = new CommandExecutionError({ command, error, message: error.message, stderr, stdout });
+                if (await onError(e)) ErrorHandler.throw(e);
             }
-            resolve(stdout);
+            resolve(mssg);
         });
     });
 };
@@ -39,13 +49,27 @@ const exeCommand = (
  * @param arg The string to evaluate.
  * @returns A boolean indicating if the string is safe (true) or not (false).
  */
-
 const isSafeCommandArg = (arg: string): boolean => {
     if (typeof arg !== 'string') return false;
     const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
     return regex.test(arg);
 };
 
+/**
+ * Replaces special characters in a string with an empty string.
+ *
+ * This function takes a string and replaces any special characters
+ * that are not allowed in shell commands with an empty string. The
+ * replaced characters are: |, <, >, &, $, `, ", ', (, ), \, ;
+ * and space.
+ *
+ * @param arg The string to process.
+ * @returns The string with all special characters replaced.
+ */
+const eliminateSpecialCharacters = (arg: string): string => {
+    const regex = /[|><&$`"'\(\)\;\\ ]+/g;
+    return arg.replace(regex, '');
+};
 /**
  * Transforms a command argument into a safe string that can be used in shell
  * commands.
@@ -71,6 +95,7 @@ const transformCommandArg = (arg: string): string => {
 
     let v = arg
         .split(' ')
+        .map(eliminateSpecialCharacters)
         .map(a =>
             isSafeCommandArg(a)
                 ? a
@@ -101,10 +126,9 @@ const parseTagsList = (data: string) => {
             let [commit, tag] = l.replace('refs/tags/', '').replace(/\s+/g, ' ').trim().split(' ');
 
             Array.from({ length: 15 }, (_, i) => tag[i] ?? ' ').join('');
-
+            tag = tag.replace('^{}', '');
             return { tag, commit };
         });
-    //.join('\n');
 };
 
 /**
