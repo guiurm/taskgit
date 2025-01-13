@@ -21,7 +21,7 @@
   "description": "",
   "dependencies": {
     "@guiurm/askly": "^1.0.1",
-    "@guiurm/taskgit-core": "^1.0.0",
+    "@guiurm/taskgit-core": "^1.1.0",
     "@guiurm/termify": "^2.1.0"
   }
 }
