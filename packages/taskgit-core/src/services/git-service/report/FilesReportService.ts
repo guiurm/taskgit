@@ -1,25 +1,10 @@
-import { LOG_SPLITTER } from '../globals';
-import { GitLogCommitInfo } from '../types';
-import { exeCommand, processFiles } from '../utils/gitServiceUtils';
-import { GitServiceFilesReport } from './GitServiceFilesReport';
+import { GitLogCommitInfo } from '@app-types';
+import { LOG_SPLITTER } from '@globals';
+import { exeCommand } from '@services/exe-service';
+import { FilesReport } from '@services/git-service/report/FilesReport';
+import { processFiles } from '@utils/gitServiceUtils';
 
-class GitService {
-    /**
-     * Get the user configuration from Git.
-     *
-     * @returns A promise that resolves with an object containing the user name and email.
-     * @throws {GitServiceError} If the command fails.
-     */
-    public static async getUser() {
-        const name = await exeCommand('git config user.name');
-        const email = await exeCommand('git config user.email');
-
-        return { name, email, toString: () => `${name} <${email}>` };
-    }
-    public static async setUser(name: string, email: string) {
-        await exeCommand(`git config user.name "${name}" && git config user.email "${email}"`);
-    }
-
+class FilesReportService {
     /**
      * Get a list of staged files from Git.
      *
@@ -70,12 +55,26 @@ class GitService {
      * @throws {ExternalServiceError} If the command fails.
      */
     public static async filesReport() {
-        const staged = await GitService.listStagedFiles();
-        const unstaged = await GitService.listUnstagedFiles();
-        const untracked = await GitService.listUntrackedFiles();
-        return new GitServiceFilesReport({ staged, unstaged, untracked });
+        const staged = await this.listStagedFiles();
+        const unstaged = await this.listUnstagedFiles();
+        const untracked = await this.listUntrackedFiles();
+        return new FilesReport({ staged, unstaged, untracked });
     }
 
+    /**
+     * Get a list of Git commits.
+     *
+     * @param args An object with three optional properties: `from`, `to`, and `branch`.
+     * `from` and `to` specify the range of commits to retrieve. If `from` is specified but `to` is not, the
+     * function will retrieve all commits newer than `from`. If `to` is specified but `from` is not, the
+     * function will retrieve all commits older than `to`.
+     * `branch` specifies the branch from which to retrieve commits. If not specified, the function will use
+     * the current branch.
+     *
+     * @returns A promise that resolves with an array of `GitLogCommitInfo` objects, each containing the
+     * commit hash, author name, author email, commit date, commit title, and commit body.
+     * @throws {ExternalServiceError} If the command fails.
+     */
     public static async log(args: { from?: string; to?: string; branch?: string } = {}): Promise<GitLogCommitInfo[]> {
         const { from, to, branch = 'master' } = args;
 
@@ -104,4 +103,4 @@ class GitService {
     }
 }
 
-export { GitService };
+export { FilesReportService };

@@ -1,6 +1,6 @@
-import { GitLogCommitInfo } from '../types';
-import { wf } from './fileService';
-import { MarkdownService } from './MarkdownService';
+import { GitLogCommitInfo } from '@app-types';
+import { wf } from '@services/file-management-service/fileService';
+import { MarkdownService } from '@services/markdown-service/MarkdownService';
 
 type ChangelogSections = {
     added: GitLogCommitInfo[];
@@ -97,7 +97,16 @@ class ChangeLogService {
         wf(outputFile, md.contentMarkdown);
     }
 
-    private static _writeSection(commits: GitLogCommitInfo[], title: string, md: MarkdownService) {
+    /**
+     * Writes a section in the markdown document for a given list of commits.
+     *
+     * @param {GitLogCommitInfo[]} commits - An array of commit objects to be included in the section.
+     * @param {string} title - The title of the section to be added to the markdown document.
+     * @param {MarkdownService} md - The markdown service instance used to create and modify the markdown content.
+     *
+     * @returns {void}
+     */
+    private static _writeSection(commits: GitLogCommitInfo[], title: string, md: MarkdownService): void {
         if (commits.length === 0) return void 0;
         md.addTitle(title, 2).addUnorderedList(
             commits.map(commit => {

@@ -1,4 +1,4 @@
-import { GitService } from '@guiurm/taskgit-core';
+import { FilesReportService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const validTargets = ['staged', 'unstaged', 'untracked'] as const;
@@ -24,7 +24,7 @@ const reportCommand = genCommand({
     args: []
 });
 reportCommand.action(async ({ target }) => {
-    const files = await GitService.filesReport();
+    const files = await FilesReportService.filesReport();
 
     switch (target) {
         case 'staged':

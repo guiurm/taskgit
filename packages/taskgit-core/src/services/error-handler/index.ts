@@ -1,5 +1,5 @@
+import { NAME, VERSION, VERSION_NAME } from '@globals';
 import { ExecException } from 'node:child_process';
-import { NAME, VERSION, VERSION_NAME } from '../globals';
 
 class AppError extends Error {
     public readonly errorTracks: string[];
@@ -39,12 +39,12 @@ class AppError extends Error {
     }
 }
 
-class GitServiceError extends AppError {
+class FilesReportServiceError extends AppError {
     public readonly command: string;
 
     constructor(message: string, command: string) {
         super(message, 2);
-        this.name = 'GitServiceError';
+        this.name = 'FilesReportServiceError';
         this.command = command;
     }
 }
@@ -109,6 +109,6 @@ export {
     CommandExecutionError,
     ErrorHandler,
     ExternalServiceError,
-    GitServiceError,
+    FilesReportServiceError,
     type CommandExecutionErrorConstructor
 };

@@ -1,7 +1,7 @@
+import { rf } from '@services/file-management-service/fileService';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { rf } from './services/fileService';
 
 const TMP_DIR = join(tmpdir(), 'taskgit');
 const TMP_PATCH_DIR = join(TMP_DIR, 'patch');

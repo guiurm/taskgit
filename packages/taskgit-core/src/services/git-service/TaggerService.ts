@@ -1,6 +1,7 @@
-import { exeCommand, parseTagsList } from '../utils/gitServiceUtils';
+import { exeCommand } from '@services/exe-service';
+import { parseTagsList } from '@utils/gitServiceUtils';
 
-class GitServiceTagger {
+class TaggerService {
     /**
      * Creates an annotated tag on the local repository.
      *
@@ -115,4 +116,4 @@ class GitServiceTagger {
     }
 }
 
-export { GitServiceTagger };
+export { TaggerService };

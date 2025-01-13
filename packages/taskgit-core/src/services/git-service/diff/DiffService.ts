@@ -1,14 +1,15 @@
-import { GitDiffOptions, TGitDiffOutputFileConf } from '../types';
-import { exeCommand } from '../utils/gitServiceUtils';
+import { GitDiffOptions } from '@app-types';
+import { exeCommand } from '@services/exe-service';
+import { DiffOutputFile } from '@services/git-service/diff/DiffOutputFile';
 
-class GitDiffService {
+class DiffService {
     /**
      * Execute the git diff command with the provided options.
      * @param options Options for the git diff command.
      * @returns The output of the git diff command.
      */
     public static async diff(options: GitDiffOptions): Promise<string> {
-        const command = this.buildDiffCommand(options);
+        const command = this._buildDiffCommand(options);
 
         return exeCommand(command);
     }
@@ -18,7 +19,7 @@ class GitDiffService {
      * @param options Options for the git diff command.
      * @returns The built git diff command.
      */
-    private static buildDiffCommand(options: GitDiffOptions): string {
+    private static _buildDiffCommand(options: GitDiffOptions): string {
         let command = 'git diff';
 
         // Add branch(es) or file
@@ -72,18 +73,17 @@ class GitDiffService {
      * Parses the output of a git diff command and extracts information about the files and their hunks.
      *
      * @param options Options for the git diff command.
-     * @returns An array of GitDiffOutputFile objects, each containing details about a file and its hunks.
+     * @returns An array of DiffOutputFile objects, each containing details about a file and its hunks.
      *
-     * The function splits the diff output into rows and iterates through them. It creates a new GitDiffOutputFile
+     * The function splits the diff output into rows and iterates through them. It creates a new DiffOutputFile
      * object for each file detected in the diff output, collecting its hunks. Hunks are added to the current file
      * object until a new file is encountered.
      */
-
-    public static async parseGitDiffOutput(options: GitDiffOptions): Promise<GitDiffOutputFile[]> {
+    public static async parseGitDiffOutput(options: GitDiffOptions): Promise<DiffOutputFile[]> {
         const diffOutput = await this.diff(options);
         const lines = diffOutput.split('\n');
 
-        const parsedFiles: GitDiffOutputFile[] = [];
+        const parsedFiles: DiffOutputFile[] = [];
         let currentHunk = '';
 
         for (let i = 0; i < lines.length; i++) {
@@ -96,7 +96,7 @@ class GitDiffService {
                 }
                 currentHunk = '';
 
-                const newFile = new GitDiffOutputFile({
+                const newFile = new DiffOutputFile({
                     file: line.replace('diff --git ', ''),
                     fileName: line.replace('diff --git ', '').split(' ')[0].replace('a/', ''),
                     index: lines[i + 1],
@@ -130,58 +130,5 @@ class GitDiffService {
         return parsedFiles;
     }
 }
-class GitDiffOutputFile {
-    public file: string;
-    public fileName: string;
-    public index: string;
-    public aFile: string;
-    public bFile: string;
-    public hunks: string[];
-    public acceptedHunks: string[];
-    public ignoredHunks: string[];
 
-    constructor(conf: TGitDiffOutputFileConf) {
-        this.file = conf.file;
-        this.fileName = conf.fileName;
-        this.index = conf.index;
-        this.aFile = conf.aFile;
-        this.bFile = conf.bFile;
-        this.hunks = conf.hunks;
-        this.acceptedHunks = [];
-        this.ignoredHunks = [];
-    }
-
-    public getTotalDiffPatch(): string {
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.hunks.join('\n')}`;
-        if (!patch.endsWith('\n')) patch += '\n';
-        return patch;
-    }
-
-    public getAcceptedDiffPatch(): string | null {
-        if (this.acceptedHunks.length === 0) return null;
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.acceptedHunks.join('\n')}`;
-        if (!patch.endsWith('\n')) patch += '\n';
-        return patch;
-    }
-
-    public getIgnoredDiffPatch(): string | null {
-        if (this.ignoredHunks.length === 0) return null;
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.ignoredHunks.join('\n')}`;
-        if (!patch.endsWith('\n')) patch += '\n';
-        return patch;
-    }
-}
-
-export { GitDiffOutputFile, GitDiffService };
+export { DiffService };

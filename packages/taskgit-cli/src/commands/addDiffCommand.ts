@@ -1,5 +1,5 @@
 import { confirm } from '@guiurm/askly';
-import { AppError, CacheStore, ErrorHandler, exeCommand, GitDiffService } from '@guiurm/taskgit-core';
+import { AppError, CacheStore, DiffService, ErrorHandler, exeCommand } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const diffPickCommand = genCommand({
@@ -16,7 +16,7 @@ const diffPickCommand = genCommand({
 });
 
 diffPickCommand.action(async ({ file }) => {
-    const diff = await GitDiffService.parseGitDiffOutput({ file });
+    const diff = await DiffService.parseGitDiffOutput({ file });
 
     if (diff.length === 0) ErrorHandler.throw(new AppError(`No diff found for '${file}'.`));
     for (const fileDiff of diff) {

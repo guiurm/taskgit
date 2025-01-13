@@ -1,5 +1,12 @@
 import { confirm, question, select } from '@guiurm/askly';
-import { AppError, ErrorHandler, ExternalServiceError, GitService, exeCommand } from '@guiurm/taskgit-core';
+import {
+    AppError,
+    ConfigService,
+    ErrorHandler,
+    ExternalServiceError,
+    FilesReportService,
+    exeCommand
+} from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 import { COMMIT_STANDARD_TYPES } from '../globals';
 
@@ -56,7 +63,7 @@ const commitCommand = genCommand({
 });
 
 commitCommand.action(async ({ body, title, type, ammend }) => {
-    const report = await GitService.filesReport();
+    const report = await FilesReportService.filesReport();
     if (report.stagedReport() === '') {
         ErrorHandler.throw(
             new AppError(
@@ -89,7 +96,7 @@ commitCommand.action(async ({ body, title, type, ammend }) => {
     if (ammend) ammend = (await confirm('Ammend commit?')) as boolean;
     target = target ? `(${target})` : target;
 
-    const author = await GitService.getUser();
+    const author = await ConfigService.getUser();
     console.log('\nauthor: ', author.toString());
 
     console.log('type: ', type);

@@ -1,8 +1,18 @@
 {
   "extends": "../../tsconfig.base.json",
+  "tsc-alias": {
+    "resolveFullPaths": true
+  },
   "compilerOptions": {
     "outDir": "./build",
     "rootDir": "./src",
-    "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo"
+    "tsBuildInfoFile": "./build/tsconfig.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"],
+      "@services/*": ["./src/services/*"],
+      "@utils/*": ["./src/utils/*"],
+      "@app-types": ["./src/types/index.ts"],
+      "@globals": ["./src/globals.ts"]
+    }
   }
 }

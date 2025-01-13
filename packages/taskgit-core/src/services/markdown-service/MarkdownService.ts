@@ -1,4 +1,4 @@
-import { wf } from './fileService';
+import { wf } from '@services/file-management-service/fileService';
 
 class MarkdownService {
     private _content: string;

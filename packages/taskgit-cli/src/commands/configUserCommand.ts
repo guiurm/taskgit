@@ -1,5 +1,5 @@
 import { confirm, question } from '@guiurm/askly';
-import { ErrorHandler, GitService, GitServiceError } from '@guiurm/taskgit-core';
+import { ConfigService, ErrorHandler, FilesReportServiceError } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const configUserCommand = genCommand({
@@ -34,9 +34,9 @@ configUserCommand.action(async ({ name, email }) => {
     if (await confirm('Is this correct?')) {
         console.log('\Updating user configuration...');
         try {
-            await GitService.setUser(name, email);
+            await ConfigService.setUser(name, email);
         } catch (error) {
-            ErrorHandler.throw(new GitServiceError('Error updating user configuration', 'setting user'));
+            ErrorHandler.throw(new FilesReportServiceError('Error updating user configuration', 'setting user'));
         }
     } else {
         console.log('\nAborting...');

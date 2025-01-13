@@ -1,7 +1,7 @@
+import { TMP_DIR, TMP_PATCH_DIR } from '@globals';
+import { sha1 } from '@services/file-management-service/fileService';
 import { existsSync, mkdirSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { TMP_DIR, TMP_PATCH_DIR } from '../globals';
-import { sha1 } from './fileService';
 
 if (!existsSync(TMP_DIR)) {
     mkdirSync(TMP_DIR);
@@ -34,12 +34,22 @@ class CacheStore {
         return CacheStore.instance;
     }
 
+    /**
+     * Creates a new patch cache from the given information.
+     *
+     * @param {object} file
+     * @param {string} file.originalDiff
+     * @param {string} file.acceptedDiff
+     * @param {string} [file.ignoredDiff]
+     * @param {string} file.filePath
+     * @returns {string} The hash of the created cache
+     */
     public createPatchCache(file: {
         originalDiff: string;
         acceptedDiff: string;
         ignoredDiff?: string;
         filePath: string;
-    }) {
+    }): string {
         const hash = sha1(file.filePath + Date.now().toString(16));
         const chacheFilePath = join(TMP_PATCH_DIR, hash);
         const fileChanges: FileChanges = {
@@ -70,17 +80,32 @@ class CacheStore {
         return hash;
     }
 
-    public getFileCache(hash: string) {
+    /**
+     * Returns the cache stored with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to retrieve
+     * @returns {FileChanges} The cache or undefined if it does not exist
+     */
+    public getFileCache(hash: string): FileChanges {
         return this.files[hash];
     }
 
-    public clearFileCache(hash: string) {
+    /**
+     * Clears the file cache associated with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to clear.
+     * @returns {boolean} - Returns false if the cache does not exist.
+     * Deletes the cached files for the original state, accepted changes,
+     * and ignored changes if they exist.
+     */
+    public clearFileCache(hash: string): boolean {
         const file = this.getFileCache(hash);
         if (!file) return false;
 
         unlinkSync(file.originalState.cacheFilePath);
         unlinkSync(file.acceptedChanges.cacheFilePath);
         if (file.ignoredChanges) unlinkSync(file.ignoredChanges.cacheFilePath);
+        return true;
     }
 }
 

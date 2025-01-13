@@ -1,4 +1,4 @@
-import { ChangeLogService, GitService } from '@guiurm/taskgit-core';
+import { ChangeLogService, FilesReportService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const changelogCommand = genCommand({
@@ -34,7 +34,7 @@ const changelogCommand = genCommand({
 });
 
 changelogCommand.action(async ({ from, to, branch }, { outputFile }) => {
-    const commits = await GitService.log({ to, from, branch });
+    const commits = await FilesReportService.log({ to, from, branch });
     ChangeLogService.generateChangelog({ commits, version: '1.0.0', outputFile });
 
     console.log(`New release notes in: ${outputFile ?? 'changelog.md'}`);

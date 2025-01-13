@@ -4,7 +4,7 @@ export type TFileListStatus = {
     deleted: string[];
 };
 
-export type TGitDiffOutputFileConf = {
+export type TDiffOutputFileConf = {
     file: string;
     fileName: string;
     index: string;

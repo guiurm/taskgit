@@ -1,5 +1,5 @@
-import { AppError, ErrorHandler } from '../error-handler';
-import { exeCommand } from '../utils/gitServiceUtils';
+import { AppError, ErrorHandler } from '@services/error-handler';
+import { exeCommand } from '@services/exe-service';
 
 type TAllVersionOptions = {
     type?: 'major' | 'minor' | 'patch' | 'premajor' | 'preminor' | 'prepatch' | 'prerelease' | 'from-git';

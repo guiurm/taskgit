@@ -1,6 +1,6 @@
-import { TFileListStatus } from '../types';
+import { TFileListStatus } from '@app-types';
 
-class GitServiceFilesReport {
+class FilesReport {
     public readonly staged: TFileListStatus;
     public readonly unstaged: TFileListStatus;
     public readonly untracked: string[];
@@ -59,4 +59,4 @@ class GitServiceFilesReport {
     }
 }
 
-export { GitServiceFilesReport };
+export { FilesReport };

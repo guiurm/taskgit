@@ -1,4 +1,4 @@
-import { AppError, ErrorHandler, GitServiceTagger } from '@guiurm/taskgit-core';
+import { AppError, ErrorHandler, TaggerService } from '@guiurm/taskgit-core';
 import { genCommand } from '@guiurm/termify';
 
 const tagCommand = genCommand({
@@ -61,19 +61,19 @@ tagCommand.action(async ({ tagName, message, remove, remote, list, listLocal, li
 
     let res: string = '';
 
-    const localTags = await GitServiceTagger.listTagsLocal();
-    const remoteTags = await GitServiceTagger.listTagsRemote();
+    const localTags = await TaggerService.listTagsLocal();
+    const remoteTags = await TaggerService.listTagsRemote();
 
     const existTag = localTags.find(({ tag }) => tag === tagName);
 
     switch (optionsList[0].name) {
         case 'add': {
             if (!message && !existTag)
-                res = await GitServiceTagger.createLightweightTag(tagName as string).then(
+                res = await TaggerService.createLightweightTag(tagName as string).then(
                     () => `\n > 'New light tag added!: ${tagName}'\n`
                 );
             else if (message && !existTag)
-                res = await GitServiceTagger.createAnnotatedTag({ name: tagName as string, message }).then(
+                res = await TaggerService.createAnnotatedTag({ name: tagName as string, message }).then(
                     () => `\n > 'New annotated tag added!: ${tagName}'\n`
                 );
 
@@ -84,16 +84,16 @@ tagCommand.action(async ({ tagName, message, remove, remote, list, listLocal, li
                     );
                 console.log(`\n > Pushing tag to remote ${remote}...`);
 
-                res += `\n > Remote ${remote}:\n   ${await GitServiceTagger.pushTag(tagName as string)}\n\n`;
+                res += `\n > Remote ${remote}:\n   ${await TaggerService.pushTag(tagName as string)}\n\n`;
             }
             break;
         }
         case 'remove': {
             if (!existTag) console.warn(`\n > Tag ${remove} does not exist locally!`);
-            else res = 'Tag removed!: ' + (await GitServiceTagger.deleteTag(remove as string));
+            else res = 'Tag removed!: ' + (await TaggerService.deleteTag(remove as string));
             if (remote) {
                 console.log(`\n > Pushing changes to remote ${remote}...`);
-                const commandRes = await GitServiceTagger.deleteRemoteTag(remove as string, remote);
+                const commandRes = await TaggerService.deleteRemoteTag(remove as string, remote);
                 res += `Tag removed from '${remote}'!: ${commandRes}`;
             }
         }
