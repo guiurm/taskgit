@@ -67,7 +67,8 @@ const isSafeCommandArg = (arg: string): boolean => {
  */
 const eliminateSpecialCharacters = (arg: string): string => {
     const regex = /[|><&$`"'\(\)\;\\ ]+/g;
-    return arg.replace(regex, '');
+    //return arg.replace(regex, '');
+    return arg;
 };
 /**
  * Transforms a command argument into a safe string that can be used in shell

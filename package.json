@@ -2,13 +2,13 @@
   "name": "@guiurm/taskgit",
   "version": "1.1.0",
   "main": "dist/cli.cjs",
-  "type": "module",
   "scripts": {
     "dev": "npm run build && cross-env NODE_ENV=development node dist/cli.cjs",
     "dev2": "cross-env NODE_ENV=development node dist/cli.cjs",
     "build:core": "npm run build -w @guiurm/taskgit-core",
     "build:cli": "npm run build -w @guiurm/taskgit-cli",
-    "build": "npm run build:core && npm run build:cli"
+    "u": "uglifyjs -m --mangle-props -c -o dist/cli.js packages/taskgit-cli/dist/cli.cjs",
+    "build": "npm run build:core && npm run build:cli && npm run u"
   },
   "files": [
     "dist",
@@ -40,7 +40,8 @@
     "tsc-alias": "^1.8.10",
     "tsconfig-paths": "^4.2.0",
     "tslib": "^2.8.1",
-    "typescript": "^5.6.3"
+    "typescript": "^5.6.3",
+    "uglify-js": "^3.19.3"
   },
   "workspaces": [
     "packages/taskgit-core",
