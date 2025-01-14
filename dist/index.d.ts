@@ -601,6 +601,13 @@ declare class TaggerService {
         tag: string;
         commit: string;
     }[]>;
+    /**
+     * Lists all tag names in the repository, ordered by the date they were created.
+     *
+     * @returns {Promise<string[]>} A promise that resolves to an array of tag names, ordered by creation date.
+     * The tag names are extracted and formatted from the git log command output.
+     */
+    static listOrderByDate(): Promise<string[]>;
 }
 
 declare class MarkdownService {
