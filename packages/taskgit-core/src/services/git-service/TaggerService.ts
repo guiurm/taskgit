@@ -114,6 +114,29 @@ class TaggerService {
 
         return list.length === 0 ? [] : list;
     }
+
+    /**
+     * Lists all tag names in the repository, ordered by the date they were created.
+     *
+     * @returns {Promise<string[]>} A promise that resolves to an array of tag names, ordered by creation date.
+     * The tag names are extracted and formatted from the git log command output.
+     */
+    public static async listOrderByDate(): Promise<string[]> {
+        //git log --tags --simplify-by-decoration --pretty="format:%d" --abbrev-commit
+        const data = await exeCommand('git log --tags --simplify-by-decoration --pretty="format:%d" --abbrev-commit');
+
+        const value = data
+            .split('\n')
+            .filter(v => v.length > 0)
+            .map(v => {
+                v = v.replace('(tag: ', '');
+                v = v.replace(')', '');
+                v = v.split(' ')[1];
+                v = v.replace(',', '');
+                return v;
+            });
+        return value;
+    }
 }
 
 export { TaggerService };
