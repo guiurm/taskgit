@@ -1,5 +1,15 @@
 import { createHash } from 'crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, Stats, statSync, writeFileSync } from 'node:fs';
+import {
+    copyFileSync,
+    existsSync,
+    mkdirSync,
+    readdirSync,
+    readFileSync,
+    renameSync,
+    Stats,
+    statSync,
+    writeFileSync
+} from 'node:fs';
 import { dirname, join } from 'path';
 
 class FileServiceError extends Error {
@@ -179,7 +189,49 @@ const isDirectory = (path: string): boolean => {
     }
 };
 
+/**
+ * Moves a file or directory from a source path to a destination path.
+ * If the source is a directory, recursively copies all its contents to the destination.
+ * If the source is a file, copies it directly to the destination.
+ *
+ * @param {string} from - The source path of the file or directory to move.
+ * @param {string} to - The destination path where the file or directory should be moved.
+ * @throws {FileServiceError} If the source path does not exist.
+ */
+const mv = (from: string, to: string) => {
+    if (existsSync(from))
+        if (isDirectory(from)) {
+            mkdirSync(to, { recursive: true });
+            readdirSync(from).forEach(f => {
+                cp(join(from, f), join(to, f));
+            });
+        } else {
+            cp(from, to);
+        }
+    else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
+};
+
+/**
+ * Copies a file from a source path to a destination path.
+ *
+ * @param {string} from - The source path of the file to copy.
+ * @param {string} to - The destination path where the file should be copied.
+ * @throws {FileServiceError} If the source file does not exist or if the source path is a directory.
+ */
+const cp = (from: string, to: string) => {
+    if (existsSync(from))
+        if (isDirectory(from)) throw new FileServiceError(`The path is '${from}' is a directory.`, from, 'read');
+        else
+            try {
+                copyFileSync(from, to);
+            } catch (error) {
+                new FileServiceError((error as Error).message, from, 'write');
+            }
+    else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
+};
+
 export {
+    cp,
     createDirPath,
     createFileHash,
     existsPath,
@@ -188,6 +240,7 @@ export {
     isDirectory,
     isFile,
     mf,
+    mv,
     resolvePath,
     rf,
     sha1,
