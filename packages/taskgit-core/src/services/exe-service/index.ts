@@ -50,9 +50,14 @@ const exeCommand = async (
  */
 const isSafeCommandArg = (arg: string): boolean => {
     if (typeof arg !== 'string') return false;
+    const optionRegex =
+        /^--[a-zA-Z0-9_-]+(?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$|^-[a-zA-Z0-9](?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$/gm;
+    if (optionRegex.test(arg)) return true;
     const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
     return regex.test(arg);
 };
+
+//despues del if pero antes de probar la regex valida si cumple con patron opcion de comando, es decir -m=2 -m="a b" -m="c" --m="d e"
 
 /**
  * Replaces special characters in a string with an empty string.
