@@ -207,4 +207,10 @@ class NpmService {
     }
 }
 
-export { NpmService };
+export {
+    NpmService,
+    type TAllVersionOptions,
+    type TExactVersionOptions,
+    type TPreVersionOptions,
+    type TVersionOptions
+};
