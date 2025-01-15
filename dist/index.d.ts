@@ -357,6 +357,37 @@ declare const isFile: (path: string) => boolean;
  * @returns {boolean} True if the path is a directory, false otherwise.
  */
 declare const isDirectory: (path: string) => boolean;
+/**
+ * Moves a file or directory from a source path to a destination path.
+ * If the source is a directory, recursively copies all its contents to the destination.
+ * If the source is a file, copies it directly to the destination.
+ *
+ * @param {string} from - The source path of the file or directory to move.
+ * @param {string} to - The destination path where the file or directory should be moved.
+ * @throws {FileServiceError} If the source path does not exist.
+ */
+declare const mv: (from: string, to: string) => void;
+/**
+ * Copies a file from a source path to a destination path.
+ *
+ * @param {string} from - The source path of the file to copy.
+ * @param {string} to - The destination path where the file should be copied.
+ * @throws {FileServiceError} If the source file does not exist or if the source path is a directory.
+ */
+declare const cp: (from: string, to: string) => void;
+
+declare class BranchService {
+    static listBranches(): Promise<string[]>;
+    static getCurrentBranch(): Promise<string>;
+    static deleteBranch(name: string): Promise<string>;
+    static createBranch(name: string): Promise<string>;
+    static checkoutBranch(name: string): Promise<string>;
+    static mergeBranch(name: string): Promise<string>;
+    static pushBranch(name: string, origin: string): Promise<string>;
+    static pullBranch(name: string, origin: string): Promise<string>;
+    static fetchBranch(name: string, origin: string): Promise<string>;
+    static deleteRemoteBranch(name: string, origin: string): Promise<string>;
+}
 
 declare class ConfigService {
     /**
@@ -521,6 +552,76 @@ declare class FilesReportService {
         to?: string;
         branch?: string;
     }): Promise<GitLogCommitInfo[]>;
+}
+
+declare class SubtreeService {
+    /**
+     * Add a subtree to the current repository.
+     *
+     * @param url The URL of the subtree to add.
+     * @param path The path to add the subtree to.
+     */
+    static addSubtree(url: string, path: string): Promise<string>;
+    /**
+     * Remove a subtree from the current repository.
+     *
+     * @param path The path of the subtree to remove.
+     */
+    static removeSubtree(path: string): Promise<string>;
+    /**
+     * Update a subtree by pulling the latest changes from the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree pull command.
+     */
+    static updateSubtree(url: string, path: string): Promise<string>;
+    /**
+     * Push the subtree to the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree push command.
+     */
+    static pushSubtree(url: string, path: string): Promise<string>;
+    /**
+     * Fetch the latest changes for a subtree from the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree fetch command.
+     */
+    static fetchSubtree(url: string, path: string): Promise<string>;
+    /**
+     * Split the subtree at the specified path to the specified remote repository.
+     *
+     * This will create a new branch on the remote repository containing the subtree
+     * and all of its history. The subtree will be split from the 'master' branch of
+     * the remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree split command.
+     */
+    static splitSubtreeToRemote(url: string, path: string): Promise<string>;
+    /**
+     * Merge the subtree from the specified remote repository into the current repository.
+     *
+     * @param url The URL of the remote repository containing the subtree to merge.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree merge command.
+     */
+    static mergeSubtreeToRemote(url: string, path: string): Promise<string>;
+    /**
+     * Split the subtree at the specified path to a new local branch.
+     *
+     * This will create a new branch containing the subtree and all of its history.
+     *
+     * @param path The path within the repository where the subtree is located.
+     * @param branch The name of the new branch to create.
+     * @returns A promise that resolves to the result of the git subtree split command.
+     */
+    static splitSubtreeToLocal(path: string, branch: string): Promise<string>;
 }
 
 declare class TaggerService {
@@ -833,4 +934,4 @@ declare const parseTagsList: (data: string) => {
  */
 declare const processFiles: (data: string) => TFileListStatus;
 
-export { AppError, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, type TDiffOutputFileConf, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, TaggerService, VERSION, VERSION_NAME, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, parseTagsList, processFiles, resolvePath, rf, sha1, wf };
+export { AppError, BranchService, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, type TAllVersionOptions, type TDiffOutputFileConf, type TExactVersionOptions, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, type TPreVersionOptions, type TVersionOptions, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, sha1, wf };

@@ -172,6 +172,50 @@ const isDirectory = (path) => {
         return false;
     }
 };
+/**
+ * Moves a file or directory from a source path to a destination path.
+ * If the source is a directory, recursively copies all its contents to the destination.
+ * If the source is a file, copies it directly to the destination.
+ *
+ * @param {string} from - The source path of the file or directory to move.
+ * @param {string} to - The destination path where the file or directory should be moved.
+ * @throws {FileServiceError} If the source path does not exist.
+ */
+const mv = (from, to) => {
+    if (node_fs.existsSync(from))
+        if (isDirectory(from)) {
+            node_fs.mkdirSync(to, { recursive: true });
+            node_fs.readdirSync(from).forEach(f => {
+                cp(path.join(from, f), path.join(to, f));
+            });
+        }
+        else {
+            cp(from, to);
+        }
+    else
+        throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
+};
+/**
+ * Copies a file from a source path to a destination path.
+ *
+ * @param {string} from - The source path of the file to copy.
+ * @param {string} to - The destination path where the file should be copied.
+ * @throws {FileServiceError} If the source file does not exist or if the source path is a directory.
+ */
+const cp = (from, to) => {
+    if (node_fs.existsSync(from))
+        if (isDirectory(from))
+            throw new FileServiceError(`The path is '${from}' is a directory.`, from, 'read');
+        else
+            try {
+                node_fs.copyFileSync(from, to);
+            }
+            catch (error) {
+                new FileServiceError(error.message, from, 'write');
+            }
+    else
+        throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
+};
 
 const TMP_DIR = node_path.join(node_os.tmpdir(), 'taskgit');
 const TMP_PATCH_DIR = node_path.join(TMP_DIR, 'patch');
@@ -609,9 +653,13 @@ const exeCommand = async (command, onError = () => false) => {
 const isSafeCommandArg = (arg) => {
     if (typeof arg !== 'string')
         return false;
+    const optionRegex = /^--[a-zA-Z0-9_-]+(?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$|^-[a-zA-Z0-9](?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$/gm;
+    if (optionRegex.test(arg))
+        return true;
     const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
     return regex.test(arg);
 };
+//despues del if pero antes de probar la regex valida si cumple con patron opcion de comando, es decir -m=2 -m="a b" -m="c" --m="d e"
 /**
  * Replaces special characters in a string with an empty string.
  *
@@ -656,6 +704,42 @@ const transformCommandArg = (arg) => {
     else
         return v.join('');
 };
+
+class BranchService {
+    static async listBranches() {
+        return (await exeCommand('git branch --list'))
+            .split('\n')
+            .filter(b => b.length > 0)
+            .map(b => b.trim());
+    }
+    static async getCurrentBranch() {
+        return (await exeCommand('git branch --show-current')).trim();
+    }
+    static async deleteBranch(name) {
+        return await exeCommand(`git branch -d ${name}`);
+    }
+    static async createBranch(name) {
+        return await exeCommand(`git checkout -b ${name}`);
+    }
+    static async checkoutBranch(name) {
+        return await exeCommand(`git checkout ${name}`);
+    }
+    static async mergeBranch(name) {
+        return await exeCommand(`git merge ${name}`);
+    }
+    static async pushBranch(name, origin) {
+        return await exeCommand(`git push ${origin} ${name}`);
+    }
+    static async pullBranch(name, origin) {
+        return await exeCommand(`git pull ${origin} ${name}`);
+    }
+    static async fetchBranch(name, origin) {
+        return await exeCommand(`git fetch ${origin} ${name}`);
+    }
+    static async deleteRemoteBranch(name, origin) {
+        return await exeCommand(`git push --delete ${origin} ${name}`);
+    }
+}
 
 class ConfigService {
     /**
@@ -1064,6 +1148,92 @@ class FilesReportService {
     }
 }
 
+class SubtreeService {
+    /**
+     * Add a subtree to the current repository.
+     *
+     * @param url The URL of the subtree to add.
+     * @param path The path to add the subtree to.
+     */
+    static async addSubtree(url, path) {
+        return await exeCommand(`git subtree add --prefix ${path} ${url} master`);
+    }
+    /**
+     * Remove a subtree from the current repository.
+     *
+     * @param path The path of the subtree to remove.
+     */
+    static async removeSubtree(path) {
+        return await exeCommand(`git subtree remove --prefix ${path}`);
+    }
+    /**
+     * Update a subtree by pulling the latest changes from the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree pull command.
+     */
+    static async updateSubtree(url, path) {
+        return await exeCommand(`git subtree pull --prefix ${path} ${url} master`);
+    }
+    /**
+     * Push the subtree to the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree push command.
+     */
+    static async pushSubtree(url, path) {
+        return await exeCommand(`git subtree push --prefix ${path} ${url} master`);
+    }
+    /**
+     * Fetch the latest changes for a subtree from the specified remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree fetch command.
+     */
+    static async fetchSubtree(url, path) {
+        return await exeCommand(`git subtree fetch --prefix ${path} ${url} master`);
+    }
+    /**
+     * Split the subtree at the specified path to the specified remote repository.
+     *
+     * This will create a new branch on the remote repository containing the subtree
+     * and all of its history. The subtree will be split from the 'master' branch of
+     * the remote repository.
+     *
+     * @param url The URL of the remote repository where the subtree is located.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree split command.
+     */
+    static async splitSubtreeToRemote(url, path) {
+        return await exeCommand(`git subtree split --prefix ${path} ${url} master`);
+    }
+    /**
+     * Merge the subtree from the specified remote repository into the current repository.
+     *
+     * @param url The URL of the remote repository containing the subtree to merge.
+     * @param path The path within the repository where the subtree is located.
+     * @returns A promise that resolves to the result of the git subtree merge command.
+     */
+    static async mergeSubtreeToRemote(url, path) {
+        return await exeCommand(`git subtree merge --prefix ${path} ${url} master`);
+    }
+    /**
+     * Split the subtree at the specified path to a new local branch.
+     *
+     * This will create a new branch containing the subtree and all of its history.
+     *
+     * @param path The path within the repository where the subtree is located.
+     * @param branch The name of the new branch to create.
+     * @returns A promise that resolves to the result of the git subtree split command.
+     */
+    static async splitSubtreeToLocal(path, branch) {
+        return await exeCommand(`git subtree split --prefix ${path} -b ${branch}`);
+    }
+}
+
 class TaggerService {
     /**
      * Creates an annotated tag on the local repository.
@@ -1332,6 +1502,7 @@ class NpmService {
 }
 
 exports.AppError = AppError;
+exports.BranchService = BranchService;
 exports.CacheStore = CacheStore;
 exports.ChangeLogService = ChangeLogService;
 exports.CommandExecutionError = CommandExecutionError;
@@ -1351,11 +1522,13 @@ exports.LOG_SPLITTER = LOG_SPLITTER;
 exports.MarkdownService = MarkdownService;
 exports.NAME = NAME;
 exports.NpmService = NpmService;
+exports.SubtreeService = SubtreeService;
 exports.TMP_DIR = TMP_DIR;
 exports.TMP_PATCH_DIR = TMP_PATCH_DIR;
 exports.TaggerService = TaggerService;
 exports.VERSION = VERSION;
 exports.VERSION_NAME = VERSION_NAME;
+exports.cp = cp;
 exports.createDirPath = createDirPath;
 exports.createFileHash = createFileHash;
 exports.exeCommand = exeCommand;
@@ -1364,6 +1537,7 @@ exports.getFileStat = getFileStat;
 exports.isDirectory = isDirectory;
 exports.isFile = isFile;
 exports.mf = mf;
+exports.mv = mv;
 exports.parseTagsList = parseTagsList;
 exports.processFiles = processFiles;
 exports.resolvePath = resolvePath;
