@@ -196,21 +196,35 @@ const isDirectory = (path: string): boolean => {
  *
  * @param {string} from - The source path of the file or directory to move.
  * @param {string} to - The destination path where the file or directory should be moved.
- * @throws {FileServiceError} If the source path does not exist.
+ * @param {boolean} [returnErrorList=false] - If true, instead of throwing errors, returns an array of objects with the following structure: {from: string, to: string, message: string}, where "from" and "to" are the paths of the file or directory that couldn't be moved, and "message" is the error string.
+ * @returns {void | { from: string; to: string; message: string }[]} - If returnErrorList is false, returns void. Otherwise returns an array of the above objects.
  */
-const mv = (from: string, to: string) => {
+const mv = (
+    from: string,
+    to: string,
+    returnErrorList: boolean = false
+): void | { from: string; to: string; message: string }[] => {
+    const failed: { from: string; to: string; message: string }[] = [];
     if (existsSync(from))
         if (isDirectory(from)) {
             mkdirSync(to, { recursive: true });
             readdirSync(from).forEach(f => {
-                cp(join(from, f), join(to, f));
+                failed.push(...(mv(join(from, f), join(to, f)) ?? []));
             });
         } else {
-            cp(from, to);
+            try {
+                cp(from, to);
+            } catch (error) {
+                const e = error as FileServiceError;
+                if (returnErrorList) failed.push({ from, to, message: (error as FileServiceError).message });
+                else throw e;
+            }
         }
-    else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
-};
+    else failed.push({ from, to, message: `The file at '${from}' does not exist.` });
 
+    if (returnErrorList) return failed;
+    else return void 0;
+};
 /**
  * Copies a file from a source path to a destination path.
  *
@@ -218,14 +232,14 @@ const mv = (from: string, to: string) => {
  * @param {string} to - The destination path where the file should be copied.
  * @throws {FileServiceError} If the source file does not exist or if the source path is a directory.
  */
-const cp = (from: string, to: string) => {
+const cp = (from: string, to: string): void => {
     if (existsSync(from))
         if (isDirectory(from)) throw new FileServiceError(`The path is '${from}' is a directory.`, from, 'read');
         else
             try {
                 copyFileSync(from, to);
             } catch (error) {
-                new FileServiceError((error as Error).message, from, 'write');
+                throw new FileServiceError((error as Error).message, from, 'write');
             }
     else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
 };
