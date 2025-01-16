@@ -364,9 +364,14 @@ declare const isDirectory: (path: string) => boolean;
  *
  * @param {string} from - The source path of the file or directory to move.
  * @param {string} to - The destination path where the file or directory should be moved.
- * @throws {FileServiceError} If the source path does not exist.
+ * @param {boolean} [returnErrorList=false] - If true, instead of throwing errors, returns an array of objects with the following structure: {from: string, to: string, message: string}, where "from" and "to" are the paths of the file or directory that couldn't be moved, and "message" is the error string.
+ * @returns {void | { from: string; to: string; message: string }[]} - If returnErrorList is false, returns void. Otherwise returns an array of the above objects.
  */
-declare const mv: (from: string, to: string) => void;
+declare const mv: (from: string, to: string, returnErrorList?: boolean) => void | {
+    from: string;
+    to: string;
+    message: string;
+}[];
 /**
  * Copies a file from a source path to a destination path.
  *
