@@ -211,6 +211,91 @@ const mv = (from, to, returnErrorList = false) => {
         return void 0;
 };
 /**
+ * Removes a directory at the specified path.
+ *
+ * @param {string} path - The path to the directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+const rmdir = (path, returnErrorList = false) => {
+    const failed = [];
+    if (node_fs.existsSync(path))
+        if (isDirectory(path)) {
+            try {
+                node_fs.rmSync(path, { recursive: true, force: true });
+                // rmdirSync(path, { recursive: true, maxRetries: 10 });
+            }
+            catch (error) {
+                if (returnErrorList)
+                    failed.push({ path, message: error.message });
+                else
+                    throw error;
+            }
+        }
+        else {
+            failed.push({ path, message: `The path '${path}' is not a directory.` });
+        }
+    else
+        failed.push({ path, message: `The file at '${path}' does not exist.` });
+    if (returnErrorList)
+        return failed;
+    else
+        return void 0;
+};
+/**
+ * Removes a file or directory at the specified path.
+ *
+ * If the path is a directory, it recursively deletes all its contents.
+ * If the path is a file, it deletes the file.
+ *
+ * @param {string} path - The path to the file or directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+const rm = (path$1, returnErrorList = false) => {
+    const failed = [];
+    if (node_fs.existsSync(path$1))
+        if (isDirectory(path$1)) {
+            node_fs.readdirSync(path$1).forEach(f => {
+                failed.push(...(rm(path.join(path$1, f)) ?? []));
+            });
+            try {
+                node_fs.rmSync(path$1, { recursive: true, force: true });
+                // rmdirSync(path);
+            }
+            catch (error) {
+                if (returnErrorList)
+                    failed.push({ path: path$1, message: error.message });
+                else
+                    throw error;
+            }
+        }
+        else {
+            try {
+                node_fs.unlinkSync(path$1);
+            }
+            catch (error) {
+                const e = error;
+                if (returnErrorList)
+                    failed.push({ path: path$1, message: error.message });
+                else
+                    throw e;
+            }
+        }
+    else
+        failed.push({ path: path$1, message: `The file at '${path$1}' does not exist.` });
+    if (returnErrorList)
+        return failed;
+    else
+        return void 0;
+};
+/**
  * Copies a file from a source path to a destination path.
  *
  * @param {string} from - The source path of the file to copy.
@@ -1557,5 +1642,7 @@ exports.parseTagsList = parseTagsList;
 exports.processFiles = processFiles;
 exports.resolvePath = resolvePath;
 exports.rf = rf;
+exports.rm = rm;
+exports.rmdir = rmdir;
 exports.sha1 = sha1;
 exports.wf = wf;

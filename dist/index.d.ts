@@ -373,6 +373,37 @@ declare const mv: (from: string, to: string, returnErrorList?: boolean) => void 
     message: string;
 }[];
 /**
+ * Removes a directory at the specified path.
+ *
+ * @param {string} path - The path to the directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+declare const rmdir: (path: string, returnErrorList?: boolean) => void | {
+    path: string;
+    message: string;
+}[];
+/**
+ * Removes a file or directory at the specified path.
+ *
+ * If the path is a directory, it recursively deletes all its contents.
+ * If the path is a file, it deletes the file.
+ *
+ * @param {string} path - The path to the file or directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+declare const rm: (path: string, returnErrorList?: boolean) => void | {
+    path: string;
+    message: string;
+}[];
+/**
  * Copies a file from a source path to a destination path.
  *
  * @param {string} from - The source path of the file to copy.
@@ -939,4 +970,4 @@ declare const parseTagsList: (data: string) => {
  */
 declare const processFiles: (data: string) => TFileListStatus;
 
-export { AppError, BranchService, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, type TAllVersionOptions, type TDiffOutputFileConf, type TExactVersionOptions, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, type TPreVersionOptions, type TVersionOptions, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, sha1, wf };
+export { AppError, BranchService, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, type TAllVersionOptions, type TDiffOutputFileConf, type TExactVersionOptions, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, type TPreVersionOptions, type TVersionOptions, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, rm, rmdir, sha1, wf };

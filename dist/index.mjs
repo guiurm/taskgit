@@ -1,5 +1,5 @@
 import { createHash } from 'crypto';
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, statSync, readdirSync, copyFileSync, unlinkSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, statSync, readdirSync, rmSync, unlinkSync, copyFileSync } from 'node:fs';
 import { join, dirname } from 'path';
 import { tmpdir } from 'node:os';
 import { join as join$1 } from 'node:path';
@@ -202,6 +202,91 @@ const mv = (from, to, returnErrorList = false) => {
         }
     else
         failed.push({ from, to, message: `The file at '${from}' does not exist.` });
+    if (returnErrorList)
+        return failed;
+    else
+        return void 0;
+};
+/**
+ * Removes a directory at the specified path.
+ *
+ * @param {string} path - The path to the directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+const rmdir = (path, returnErrorList = false) => {
+    const failed = [];
+    if (existsSync(path))
+        if (isDirectory(path)) {
+            try {
+                rmSync(path, { recursive: true, force: true });
+                // rmdirSync(path, { recursive: true, maxRetries: 10 });
+            }
+            catch (error) {
+                if (returnErrorList)
+                    failed.push({ path, message: error.message });
+                else
+                    throw error;
+            }
+        }
+        else {
+            failed.push({ path, message: `The path '${path}' is not a directory.` });
+        }
+    else
+        failed.push({ path, message: `The file at '${path}' does not exist.` });
+    if (returnErrorList)
+        return failed;
+    else
+        return void 0;
+};
+/**
+ * Removes a file or directory at the specified path.
+ *
+ * If the path is a directory, it recursively deletes all its contents.
+ * If the path is a file, it deletes the file.
+ *
+ * @param {string} path - The path to the file or directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+const rm = (path, returnErrorList = false) => {
+    const failed = [];
+    if (existsSync(path))
+        if (isDirectory(path)) {
+            readdirSync(path).forEach(f => {
+                failed.push(...(rm(join(path, f)) ?? []));
+            });
+            try {
+                rmSync(path, { recursive: true, force: true });
+                // rmdirSync(path);
+            }
+            catch (error) {
+                if (returnErrorList)
+                    failed.push({ path, message: error.message });
+                else
+                    throw error;
+            }
+        }
+        else {
+            try {
+                unlinkSync(path);
+            }
+            catch (error) {
+                const e = error;
+                if (returnErrorList)
+                    failed.push({ path, message: error.message });
+                else
+                    throw e;
+            }
+        }
+    else
+        failed.push({ path, message: `The file at '${path}' does not exist.` });
     if (returnErrorList)
         return failed;
     else
@@ -1513,4 +1598,4 @@ class NpmService {
     }
 }
 
-export { AppError, BranchService, CacheStore, ChangeLogService, CommandExecutionError, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, TMP_DIR, TMP_PATCH_DIR, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, sha1, wf };
+export { AppError, BranchService, CacheStore, ChangeLogService, CommandExecutionError, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, TMP_DIR, TMP_PATCH_DIR, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, rm, rmdir, sha1, wf };
