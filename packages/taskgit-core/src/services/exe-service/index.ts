@@ -14,16 +14,16 @@ import { exec } from 'node:child_process';
  * @returns A promise that resolves with the output of the command as a string.
  */
 const exeCommand = async (
-    command: string | string[],
+    command: string,
     onError: (even: CommandExecutionError) => boolean | Promise<boolean> = () => false
 ) => {
-    if (Array.isArray(command)) command = command.map(transformCommandArg).join(' ');
+    /*if (Array.isArray(command)) command = command.map(transformCommandArg).join(' ');
     else {
         const regex = /"[^"]*"|[^ ]+/g;
         const marches = command.match(regex);
         if (marches !== null) command = marches.map(transformCommandArg).join(' ');
         else command = transformCommandArg(command);
-    }
+    }*/
 
     return new Promise<string>(resolve => {
         exec(command, async (error, stdout, stderr) => {
