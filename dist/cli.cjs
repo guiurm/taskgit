@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 
-var node_os = require('node:os');
-var node_path = require('node:path');
-var node_url = require('node:url');
 var crypto = require('crypto');
 var node_fs = require('node:fs');
 require('path');
+var node_os = require('node:os');
+var node_path = require('node:path');
+var node_url = require('node:url');
 var node_child_process = require('node:child_process');
 var readline$1 = require('readline');
 var promises = require('node:readline/promises');
@@ -97,6 +97,87 @@ const IS_DEV = ['dev', 'development'].includes(process.env.NODE_ENV);
 const IS_TEST = process.env.NODE_ENV === 'test';
 const LOG_SPLITTER = '_$ ò $_';
 
+if (!node_fs.existsSync(TMP_DIR)) {
+    node_fs.mkdirSync(TMP_DIR);
+}
+if (!node_fs.existsSync(TMP_PATCH_DIR)) {
+    node_fs.mkdirSync(TMP_PATCH_DIR);
+}
+class CacheStore {
+    static instance; // Instancia estática de la clase
+    files;
+    constructor() {
+        this.files = {};
+        if (!CacheStore.instance) {
+            CacheStore.instance = this;
+        }
+        return CacheStore.instance;
+    }
+    /**
+     * Creates a new patch cache from the given information.
+     *
+     * @param {object} file
+     * @param {string} file.originalDiff
+     * @param {string} file.acceptedDiff
+     * @param {string} [file.ignoredDiff]
+     * @param {string} file.filePath
+     * @returns {string} The hash of the created cache
+     */
+    createPatchCache(file) {
+        const hash = sha1(file.filePath + Date.now().toString(16));
+        const chacheFilePath = node_path.join(TMP_PATCH_DIR, hash);
+        const fileChanges = {
+            hash,
+            acceptedChanges: {
+                cacheFilePath: chacheFilePath + '-ac.patch',
+                content: file.acceptedDiff
+            },
+            originalState: {
+                cacheFilePath: chacheFilePath + '-or.patch',
+                content: file.originalDiff
+            }
+        };
+        if (file.ignoredDiff)
+            fileChanges.ignoredChanges = {
+                cacheFilePath: chacheFilePath + '-ig.patch',
+                content: file.ignoredDiff
+            };
+        node_fs.writeFileSync(fileChanges.originalState.cacheFilePath, fileChanges.originalState.content);
+        node_fs.writeFileSync(fileChanges.acceptedChanges.cacheFilePath, fileChanges.acceptedChanges.content);
+        if (fileChanges.ignoredChanges)
+            node_fs.writeFileSync(fileChanges.ignoredChanges.cacheFilePath, fileChanges.ignoredChanges.content);
+        this.files[hash] = fileChanges;
+        return hash;
+    }
+    /**
+     * Returns the cache stored with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to retrieve
+     * @returns {FileChanges} The cache or undefined if it does not exist
+     */
+    getFileCache(hash) {
+        return this.files[hash];
+    }
+    /**
+     * Clears the file cache associated with the given hash.
+     *
+     * @param {string} hash - The hash of the cache to clear.
+     * @returns {boolean} - Returns false if the cache does not exist.
+     * Deletes the cached files for the original state, accepted changes,
+     * and ignored changes if they exist.
+     */
+    clearFileCache(hash) {
+        const file = this.getFileCache(hash);
+        if (!file)
+            return false;
+        node_fs.unlinkSync(file.originalState.cacheFilePath);
+        node_fs.unlinkSync(file.acceptedChanges.cacheFilePath);
+        if (file.ignoredChanges)
+            node_fs.unlinkSync(file.ignoredChanges.cacheFilePath);
+        return true;
+    }
+}
+
 class AppError extends Error {
     errorTracks;
     static VERSION = VERSION;
@@ -130,11 +211,11 @@ class AppError extends Error {
         return AppError.VERSION_NAME;
     }
 }
-class GitServiceError extends AppError {
+class FilesReportServiceError extends AppError {
     command;
     constructor(message, command) {
         super(message, 2);
-        this.name = 'GitServiceError';
+        this.name = 'FilesReportServiceError';
         this.command = command;
     }
 }
@@ -180,62 +261,6 @@ class ErrorHandler {
     }
 }
 
-if (!node_fs.existsSync(TMP_DIR)) {
-    node_fs.mkdirSync(TMP_DIR);
-}
-if (!node_fs.existsSync(TMP_PATCH_DIR)) {
-    node_fs.mkdirSync(TMP_PATCH_DIR);
-}
-class CacheStore {
-    static instance; // Instancia estática de la clase
-    files;
-    constructor() {
-        this.files = {};
-        if (!CacheStore.instance) {
-            CacheStore.instance = this;
-        }
-        return CacheStore.instance;
-    }
-    createPatchCache(file) {
-        const hash = sha1(file.filePath + Date.now().toString(16));
-        const chacheFilePath = node_path.join(TMP_PATCH_DIR, hash);
-        const fileChanges = {
-            hash,
-            acceptedChanges: {
-                cacheFilePath: chacheFilePath + '-ac.patch',
-                content: file.acceptedDiff
-            },
-            originalState: {
-                cacheFilePath: chacheFilePath + '-or.patch',
-                content: file.originalDiff
-            }
-        };
-        if (file.ignoredDiff)
-            fileChanges.ignoredChanges = {
-                cacheFilePath: chacheFilePath + '-ig.patch',
-                content: file.ignoredDiff
-            };
-        node_fs.writeFileSync(fileChanges.originalState.cacheFilePath, fileChanges.originalState.content);
-        node_fs.writeFileSync(fileChanges.acceptedChanges.cacheFilePath, fileChanges.acceptedChanges.content);
-        if (fileChanges.ignoredChanges)
-            node_fs.writeFileSync(fileChanges.ignoredChanges.cacheFilePath, fileChanges.ignoredChanges.content);
-        this.files[hash] = fileChanges;
-        return hash;
-    }
-    getFileCache(hash) {
-        return this.files[hash];
-    }
-    clearFileCache(hash) {
-        const file = this.getFileCache(hash);
-        if (!file)
-            return false;
-        node_fs.unlinkSync(file.originalState.cacheFilePath);
-        node_fs.unlinkSync(file.acceptedChanges.cacheFilePath);
-        if (file.ignoredChanges)
-            node_fs.unlinkSync(file.ignoredChanges.cacheFilePath);
-    }
-}
-
 class MarkdownService {
     _content;
     constructor() {
@@ -248,6 +273,8 @@ class MarkdownService {
      * @returns {this} The markdown service to chain methods.
      */
     addTitle(text, level = 1) {
+        if (level < 1 || level > 6)
+            ErrorHandler.throw(new AppError('Level must be between 1 and 6.'));
         const title = '#'.repeat(level) + ` ${text}\n`;
         this._content += title;
         return this;
@@ -427,6 +454,15 @@ class ChangeLogService {
         this._writeSection(sections.security, 'Security', md);
         wf(outputFile, md.contentMarkdown);
     }
+    /**
+     * Writes a section in the markdown document for a given list of commits.
+     *
+     * @param {GitLogCommitInfo[]} commits - An array of commit objects to be included in the section.
+     * @param {string} title - The title of the section to be added to the markdown document.
+     * @param {MarkdownService} md - The markdown service instance used to create and modify the markdown content.
+     *
+     * @returns {void}
+     */
     static _writeSection(commits, title, md) {
         if (commits.length === 0)
             return void 0;
@@ -440,10 +476,30 @@ class ChangeLogService {
 }
 
 /**
+ * Checks if a given string is a safe command to execute.
+ *
+ * This function evaluates whether the input string contains only
+ * characters that are considered safe for use in shell commands,
+ * i.e., it does not contain any special characters that could
+ * alter the behavior of the shell command.
+ *
+ * @param {string} command The string to evaluate.
+ * @param {boolean} iKnowWhatImDoing Whether to bypass the check. Defaults to false.
+ * @returns A boolean indicating if the string is safe (true) or not (false).
+ */
+const isSafeCommand = (command, iKnowWhatImDoing = false) => {
+    if (iKnowWhatImDoing)
+        return true;
+    if (!command || typeof command !== 'string' || command.length === 0)
+        return false;
+    const unsafePattern = /[;&|<>]/;
+    return !unsafePattern.test(command);
+};
+/**
  * Executes a command and returns the result as a promise.
  *
- * @param command The command to execute. Can be a string or an array of strings.
- * @param onError A callback that will be called if the command execution fails.
+ * @param {string | string[]} command The command to execute. Can be a string or an array of strings.
+ * @param {Function} onError A callback that will be called if the command execution fails.
  *                If the callback returns true, the method will throw an error.
  *                If it returns false or nothing, the method will return the error
  *                as a CommandExecutionError. If the callback returns a promise,
@@ -451,17 +507,9 @@ class ChangeLogService {
  *                what to do.
  * @returns A promise that resolves with the output of the command as a string.
  */
-const exeCommand = (command, onError = () => false) => {
-    if (Array.isArray(command))
-        command = command.map(transformCommandArg).join(' ');
-    else {
-        const regex = /"[^"]*"|[^ ]+/g;
-        const marches = command.match(regex);
-        if (marches !== null)
-            command = marches.map(transformCommandArg).join(' ');
-        else
-            command = transformCommandArg(command);
-    }
+const exeCommand = async (command, onError = () => false, iKnowWhatImDoing = false) => {
+    if (!isSafeCommand(command, iKnowWhatImDoing))
+        ErrorHandler.throw(new AppError('Unsafe command detected.'));
     return new Promise(resolve => {
         node_child_process.exec(command, async (error, stdout, stderr) => {
             const mssg = stdout.length > 0 ? stdout : stderr;
@@ -474,120 +522,125 @@ const exeCommand = (command, onError = () => false) => {
         });
     });
 };
-/**
- * Checks if a given string is a safe command argument.
- *
- * This function evaluates whether the input string contains only
- * characters that are considered safe for use in shell commands,
- * i.e., it does not contain any special characters that could
- * alter the behavior of the shell command.
- *
- * @param arg The string to evaluate.
- * @returns A boolean indicating if the string is safe (true) or not (false).
- */
-const isSafeCommandArg = (arg) => {
-    if (typeof arg !== 'string')
-        return false;
-    const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
-    return regex.test(arg);
-};
-/**
- * Replaces special characters in a string with an empty string.
- *
- * This function takes a string and replaces any special characters
- * that are not allowed in shell commands with an empty string. The
- * replaced characters are: |, <, >, &, $, `, ", ', (, ), \, ;
- * and space.
- *
- * @param arg The string to process.
- * @returns The string with all special characters replaced.
- */
-const eliminateSpecialCharacters = (arg) => {
-    const regex = /[|><&$`"'\(\)\;\\ ]+/g;
-    return arg.replace(regex, '');
-};
-/**
- * Transforms a command argument into a safe string that can be used in shell
- * commands.
- *
- * This function splits the argument into individual words and checks if
- * each word is a safe command argument. If a word is not safe, it is
- * replaced with an empty string.
- *
- * If the argument was split into multiple words, the resulting array is
- * joined back together with a space separator and enclosed in double
- * quotes.
- *
- * @param arg The string to transform.
- * @returns The transformed string.
- */
-const transformCommandArg = (arg) => {
-    if (typeof arg !== 'string')
-        ErrorHandler.throw(new AppError('An internal error has occurred. Please review your configuration or consult the documentation.'));
-    let v = arg
-        .split(' ')
-        .map(eliminateSpecialCharacters)
-        .map(a => isSafeCommandArg(a)
-        ? a
-        : (ErrorHandler.throw(new AppError('An internal error has occurred. Please review your configuration or consult the documentation.')) ?? ''));
-    if (v.length > 1)
-        return ['"', v.join(' '), '"'].join('');
-    else
-        return v.join('');
-};
-/**
- * Parse a string containing a list of tags with their commit hashes and
- * return a string with each tag in a separate line, indented by two spaces.
- * Each line is formatted as " * <tag> <commit>" and the tags are padded to
- * 15 characters.
- * @param data The string to parse.
- * @returns A string with the parsed list of tags.
- */
-const parseTagsList = (data) => {
-    return data
-        .split('\n')
-        .filter(l => l.length > 0)
-        .map(l => {
-        let [commit, tag] = l.replace('refs/tags/', '').replace(/\s+/g, ' ').trim().split(' ');
-        Array.from({ length: 15 }, (_, i) => tag[i] ?? ' ').join('');
-        tag = tag.replace('^{}', '');
-        return { tag, commit };
-    });
-};
-/**
- * Process a string containing a list of files with their status (from Git)
- * and return an object with three properties: added, modified and deleted.
- * Each property is an array of strings, containing the names of the files
- * that have been added, modified or deleted.
- *
- * @param data The string to process.
- * @returns An object with three properties: added, modified and deleted.
- */
-const processFiles = (data) => {
-    const files = { added: [], modified: [], deleted: [] };
-    data.split('\n')
-        .map(line => line.trim())
-        .forEach(line => {
-        const status = line.charAt(0);
-        const file = line.slice(2).trim();
-        if (status === 'A')
-            files.added.push(file);
-        else if (status === 'M')
-            files.modified.push(file);
-        else if (status === 'D')
-            files.deleted.push(file);
-    });
-    return files;
-};
 
-class GitDiffService {
+class ConfigService {
+    /**
+     * Get the user configuration from Git.
+     *
+     * @returns A promise that resolves with an object containing the user name and email.
+     * @throws {FilesReportServiceError} If the command fails.
+     */
+    static async getUser() {
+        const name = await exeCommand('git config user.name');
+        const email = await exeCommand('git config user.email');
+        return { name, email, toString: () => `${name} <${email}>` };
+    }
+    /**
+     * Set the user configuration in Git.
+     *
+     * @param name The user's name to set in the Git configuration.
+     * @param email The user's email to set in the Git configuration.
+     * @returns A promise that resolves when the user configuration is successfully set.
+     * @throws {FilesReportServiceError} If the command fails.
+     */
+    static async setUser(name, email) {
+        await exeCommand(`git config user.name "${name}" && git config user.email "${email}"`);
+    }
+}
+
+class DiffOutputFile {
+    file;
+    fileName;
+    index;
+    aFile;
+    bFile;
+    hunks;
+    acceptedHunks;
+    ignoredHunks;
+    /**
+     * Constructor for DiffOutputFile.
+     *
+     * @param {TDiffOutputFileConf} conf - Configuration object for the DiffOutputFile.
+     *
+     * The configuration object should contain the following properties:
+     * - file: The file path of the file.
+     * - fileName: The name of the file.
+     * - index: The index of the file.
+     * - aFile: The "a/" file name.
+     * - bFile: The "b/" file name.
+     * - hunks: An array of hunk strings.
+     */
+    constructor(conf) {
+        this.file = conf.file;
+        this.fileName = conf.fileName;
+        this.index = conf.index;
+        this.aFile = conf.aFile;
+        this.bFile = conf.bFile;
+        this.hunks = conf.hunks;
+        this.acceptedHunks = [];
+        this.ignoredHunks = [];
+    }
+    /**
+     * Generates a diff patch string for the file, containing all hunks.
+     *
+     * @returns {string} A string representing the diff patch for the file.
+     */
+    getTotalDiffPatch() {
+        let patch = `diff --git ${this.file}`;
+        patch += `\n${this.index}`;
+        patch += `\n${this.aFile}`;
+        patch += `\n${this.bFile}`;
+        patch += `\n${this.hunks.join('\n')}`;
+        if (!patch.endsWith('\n'))
+            patch += '\n';
+        return patch;
+    }
+    /**
+     * Generates a diff patch string for the accepted hunks of a file.
+     *
+     * @returns {string | null} A string representing the diff patch for the accepted hunks
+     * of the file, or null if there are no accepted hunks.
+     */
+    getAcceptedDiffPatch() {
+        if (this.acceptedHunks.length === 0)
+            return null;
+        let patch = `diff --git ${this.file}`;
+        patch += `\n${this.index}`;
+        patch += `\n${this.aFile}`;
+        patch += `\n${this.bFile}`;
+        patch += `\n${this.acceptedHunks.join('\n')}`;
+        if (!patch.endsWith('\n'))
+            patch += '\n';
+        return patch;
+    }
+    /**
+     * Generates a diff patch string for the ignored hunks of a file.
+     *
+     * @returns {string | null} A string representing the diff patch for the ignored hunks
+     * of the file, or null if there are no ignored hunks.
+     */
+    getIgnoredDiffPatch() {
+        if (this.ignoredHunks.length === 0)
+            return null;
+        let patch = `diff --git ${this.file}`;
+        patch += `\n${this.index}`;
+        patch += `\n${this.aFile}`;
+        patch += `\n${this.bFile}`;
+        patch += `\n${this.ignoredHunks.join('\n')}`;
+        if (!patch.endsWith('\n'))
+            patch += '\n';
+        return patch;
+    }
+}
+
+class DiffService {
     /**
      * Execute the git diff command with the provided options.
      * @param options Options for the git diff command.
      * @returns The output of the git diff command.
      */
     static async diff(options) {
-        const command = this.buildDiffCommand(options);
+        const command = this._buildDiffCommand(options);
         return exeCommand(command);
     }
     /**
@@ -595,7 +648,7 @@ class GitDiffService {
      * @param options Options for the git diff command.
      * @returns The built git diff command.
      */
-    static buildDiffCommand(options) {
+    static _buildDiffCommand(options) {
         let command = 'git diff';
         // Add branch(es) or file
         if (options.branch1 && options.branch2) {
@@ -644,9 +697,9 @@ class GitDiffService {
      * Parses the output of a git diff command and extracts information about the files and their hunks.
      *
      * @param options Options for the git diff command.
-     * @returns An array of GitDiffOutputFile objects, each containing details about a file and its hunks.
+     * @returns An array of DiffOutputFile objects, each containing details about a file and its hunks.
      *
-     * The function splits the diff output into rows and iterates through them. It creates a new GitDiffOutputFile
+     * The function splits the diff output into rows and iterates through them. It creates a new DiffOutputFile
      * object for each file detected in the diff output, collecting its hunks. Hunks are added to the current file
      * object until a new file is encountered.
      */
@@ -663,7 +716,7 @@ class GitDiffService {
                     lastFile.hunks.push(currentHunk);
                 }
                 currentHunk = '';
-                const newFile = new GitDiffOutputFile({
+                const newFile = new DiffOutputFile({
                     file: line.replace('diff --git ', ''),
                     fileName: line.replace('diff --git ', '').split(' ')[0].replace('a/', ''),
                     index: lines[i + 1],
@@ -697,62 +750,8 @@ class GitDiffService {
         return parsedFiles;
     }
 }
-class GitDiffOutputFile {
-    file;
-    fileName;
-    index;
-    aFile;
-    bFile;
-    hunks;
-    acceptedHunks;
-    ignoredHunks;
-    constructor(conf) {
-        this.file = conf.file;
-        this.fileName = conf.fileName;
-        this.index = conf.index;
-        this.aFile = conf.aFile;
-        this.bFile = conf.bFile;
-        this.hunks = conf.hunks;
-        this.acceptedHunks = [];
-        this.ignoredHunks = [];
-    }
-    getTotalDiffPatch() {
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.hunks.join('\n')}`;
-        if (!patch.endsWith('\n'))
-            patch += '\n';
-        return patch;
-    }
-    getAcceptedDiffPatch() {
-        if (this.acceptedHunks.length === 0)
-            return null;
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.acceptedHunks.join('\n')}`;
-        if (!patch.endsWith('\n'))
-            patch += '\n';
-        return patch;
-    }
-    getIgnoredDiffPatch() {
-        if (this.ignoredHunks.length === 0)
-            return null;
-        let patch = `diff --git ${this.file}`;
-        patch += `\n${this.index}`;
-        patch += `\n${this.aFile}`;
-        patch += `\n${this.bFile}`;
-        patch += `\n${this.ignoredHunks.join('\n')}`;
-        if (!patch.endsWith('\n'))
-            patch += '\n';
-        return patch;
-    }
-}
 
-class GitServiceFilesReport {
+class FilesReport {
     staged;
     unstaged;
     untracked;
@@ -796,21 +795,52 @@ class GitServiceFilesReport {
     }
 }
 
-class GitService {
-    /**
-     * Get the user configuration from Git.
-     *
-     * @returns A promise that resolves with an object containing the user name and email.
-     * @throws {GitServiceError} If the command fails.
-     */
-    static async getUser() {
-        const data = await exeCommand('git config user.name && git config user.email');
-        const [name, email] = data.split('\n').map(l => l.trim());
-        return { name, email, toString: () => `${name} <${email}>` };
-    }
-    static async setUser(name, email) {
-        await exeCommand(`git config user.name "${name}" && git config user.email "${email}"`);
-    }
+/**
+ * Parse a string containing a list of tags with their commit hashes and
+ * return a string with each tag in a separate line, indented by two spaces.
+ * Each line is formatted as " * <tag> <commit>" and the tags are padded to
+ * 15 characters.
+ * @param data The string to parse.
+ * @returns A string with the parsed list of tags.
+ */
+const parseTagsList = (data) => {
+    return data
+        .split('\n')
+        .filter(l => l.length > 0)
+        .map(l => {
+        let [commit, tag] = l.replace('refs/tags/', '').replace(/\s+/g, ' ').trim().split(' ');
+        Array.from({ length: 15 }, (_, i) => tag[i] ?? ' ').join('');
+        tag = tag.replace('^{}', '');
+        return { tag, commit };
+    });
+};
+/**
+ * Process a string containing a list of files with their status (from Git)
+ * and return an object with three properties: added, modified and deleted.
+ * Each property is an array of strings, containing the names of the files
+ * that have been added, modified or deleted.
+ *
+ * @param data The string to process.
+ * @returns An object with three properties: added, modified and deleted.
+ */
+const processFiles = (data) => {
+    const files = { added: [], modified: [], deleted: [] };
+    data.split('\n')
+        .map(line => line.trim())
+        .forEach(line => {
+        const status = line.charAt(0);
+        const file = line.slice(2).trim();
+        if (status === 'A')
+            files.added.push(file);
+        else if (status === 'M')
+            files.modified.push(file);
+        else if (status === 'D')
+            files.deleted.push(file);
+    });
+    return files;
+};
+
+class FilesReportService {
     /**
      * Get a list of staged files from Git.
      *
@@ -856,11 +886,25 @@ class GitService {
      * @throws {ExternalServiceError} If the command fails.
      */
     static async filesReport() {
-        const staged = await GitService.listStagedFiles();
-        const unstaged = await GitService.listUnstagedFiles();
-        const untracked = await GitService.listUntrackedFiles();
-        return new GitServiceFilesReport({ staged, unstaged, untracked });
+        const staged = await this.listStagedFiles();
+        const unstaged = await this.listUnstagedFiles();
+        const untracked = await this.listUntrackedFiles();
+        return new FilesReport({ staged, unstaged, untracked });
     }
+    /**
+     * Get a list of Git commits.
+     *
+     * @param args An object with three optional properties: `from`, `to`, and `branch`.
+     * `from` and `to` specify the range of commits to retrieve. If `from` is specified but `to` is not, the
+     * function will retrieve all commits newer than `from`. If `to` is specified but `from` is not, the
+     * function will retrieve all commits older than `to`.
+     * `branch` specifies the branch from which to retrieve commits. If not specified, the function will use
+     * the current branch.
+     *
+     * @returns A promise that resolves with an array of `GitLogCommitInfo` objects, each containing the
+     * commit hash, author name, author email, commit date, commit title, and commit body.
+     * @throws {ExternalServiceError} If the command fails.
+     */
     static async log(args = {}) {
         const { from, to, branch = 'master' } = args;
         let command = `git log ${branch} --pretty=format:"%H%n%an%n%ae%n%ad%n%s%n%b${LOG_SPLITTER}"`;
@@ -886,7 +930,7 @@ class GitService {
     }
 }
 
-class GitServiceTagger {
+class TaggerService {
     /**
      * Creates an annotated tag on the local repository.
      *
@@ -978,6 +1022,27 @@ class GitServiceTagger {
     static async listTagsRemote() {
         const list = parseTagsList((await exeCommand('git ls-remote --tags')).slice(1));
         return list.length === 0 ? [] : list;
+    }
+    /**
+     * Lists all tag names in the repository, ordered by the date they were created.
+     *
+     * @returns {Promise<string[]>} A promise that resolves to an array of tag names, ordered by creation date.
+     * The tag names are extracted and formatted from the git log command output.
+     */
+    static async listOrderByDate() {
+        //git log --tags --simplify-by-decoration --pretty="format:%d" --abbrev-commit
+        const data = await exeCommand('git log --tags --simplify-by-decoration --pretty="format:%d" --abbrev-commit');
+        const value = data
+            .split('\n')
+            .filter(v => v.length > 0)
+            .map(v => {
+            v = v.replace('(tag: ', '');
+            v = v.replace(')', '');
+            v = v.split(' ')[1];
+            v = v.replace(',', '');
+            return v;
+        });
+        return value;
     }
 }
 
@@ -1194,28 +1259,7 @@ class BaseCommand {
             const found = parsedOptions.some(a => a.name === element.name);
             if (!found && element.required)
                 throw new CommandError(`${element.name} is not provided`);
-            if (!found && element.defaultValue !== undefined)
-                switch (element.optionType) {
-                    case 'string':
-                        parsedOptions.push({
-                            ...element,
-                            value: element.defaultValue
-                        });
-                        break;
-                    case 'number':
-                        parsedOptions.push({
-                            ...element,
-                            value: element.defaultValue
-                        });
-                        break;
-                    case 'boolean':
-                        parsedOptions.push({
-                            ...element,
-                            value: element.defaultValue
-                        });
-                        break;
-                }
-            else if (!found && element.optionType === 'boolean')
+            if (!found && element.optionType === 'boolean')
                 parsedOptions.push({
                     ...element,
                     value: false
@@ -1255,18 +1299,22 @@ class BaseCommand {
             ` ${this._description ?? 'No description available for this command'}\n\n` +
             ' Options:\n' +
             `${this._options
-                .map(o => '   ' +
-                o.flag +
+                .map(currentOption => '   ' +
+                currentOption.flag +
                 ' ' +
-                o.alias?.join(' ') +
+                currentOption.alias?.join(' ') +
                 '    ' +
-                (o.description
-                    ? o.description.toUpperCase()
-                    : (o.required ? 'required' : 'optional') + ' ' + o.optionType) +
+                (currentOption.description && currentOption.description.length > 0
+                    ? currentOption.description.toUpperCase()
+                    : (currentOption.required ? 'required' : 'optional') + ' ' + currentOption.optionType) +
                 '\n')
                 .join('')}\n\n` +
             (this._arguments.length > 0 ? ` Arguments:\n` : '') +
-            `${this._arguments.map(a => `   <${a.name}>    ${a.description ? a.description.toUpperCase() : (a.required ? ' required' : ' optional') + ' ' + a.type}`).join('\n')}`);
+            `${this._arguments
+                .map(currentArgument => `   <${currentArgument.name}>    ${currentArgument.description && currentArgument.description.length > 0
+                ? currentArgument.description.toUpperCase()
+                : (currentArgument.required ? ' required' : ' optional') + ' ' + currentArgument.type}`)
+                .join('\n')}`);
     }
 }
 
@@ -1459,7 +1507,7 @@ const diffPickCommand = genCommand({
     ]
 });
 diffPickCommand.action(async ({ file }) => {
-    const diff = await GitDiffService.parseGitDiffOutput({ file });
+    const diff = await DiffService.parseGitDiffOutput({ file });
     if (diff.length === 0)
         ErrorHandler.throw(new AppError(`No diff found for '${file}'.`));
     for (const fileDiff of diff) {
@@ -1526,7 +1574,7 @@ const changelogCommand = genCommand({
     ]
 });
 changelogCommand.action(async ({ from, to, branch }, { outputFile }) => {
-    const commits = await GitService.log({ to, from, branch });
+    const commits = await FilesReportService.log({ to, from, branch });
     ChangeLogService.generateChangelog({ commits, version: '1.0.0', outputFile });
     console.log(`New release notes in: ${outputFile ?? 'changelog.md'}`);
 });
@@ -1651,7 +1699,7 @@ const commitCommand = genCommand({
     ]
 });
 commitCommand.action(async ({ body, title, type, ammend }) => {
-    const report = await GitService.filesReport();
+    const report = await FilesReportService.filesReport();
     if (report.stagedReport() === '') {
         ErrorHandler.throw(new AppError("There are no files staged for commit, first add some.\nIt appears that you haven't added any files to the staging area. Please use git add <file> to stage your changes before committing."));
     }
@@ -1678,7 +1726,7 @@ commitCommand.action(async ({ body, title, type, ammend }) => {
     if (ammend)
         ammend = (await confirm('Ammend commit?'));
     target = target ? `(${target})` : target;
-    const author = await GitService.getUser();
+    const author = await ConfigService.getUser();
     console.log('\nauthor: ', author.toString());
     console.log('type: ', type);
     console.log('title: ', title);
@@ -1686,7 +1734,7 @@ commitCommand.action(async ({ body, title, type, ammend }) => {
     console.log('\n', report.stagedReport());
     if (await confirm('Is this correct?')) {
         console.log('\nCommitting...');
-        const command = `git commit ${ammend ? '--amend' : ''} -m "${type}${target}: ${title}\n\n${body}"`;
+        const command = `git commit ${ammend ? '--amend' : ''} -m "${type}${target}: ${title}" ${body ? `-m "${body}"` : ''}`;
         const result = await exeCommand(command);
         console.log('result:');
         console.log(result);
@@ -1728,10 +1776,10 @@ configUserCommand.action(async ({ name, email }) => {
     if (await confirm('Is this correct?')) {
         console.log('\Updating user configuration...');
         try {
-            await GitService.setUser(name, email);
+            await ConfigService.setUser(name, email);
         }
         catch (error) {
-            ErrorHandler.throw(new GitServiceError('Error updating user configuration', 'setting user'));
+            ErrorHandler.throw(new FilesReportServiceError('Error updating user configuration', 'setting user'));
         }
     }
     else {
@@ -1764,7 +1812,7 @@ const reportCommand = genCommand({
     args: []
 });
 reportCommand.action(async ({ target }) => {
-    const files = await GitService.filesReport();
+    const files = await FilesReportService.filesReport();
     switch (target) {
         case 'staged':
             console.log(files.stagedReport());
@@ -1832,20 +1880,20 @@ tagCommand.action(async ({ tagName, message, remove, remote, list, listLocal, li
         ErrorHandler.throw(new AppError(`\n > Error: The options "${optionsList.map(item => item.name).join(', ')}" provided are incompatible.\n` +
             `   Please check the command and ensure that the options you are using do not conflict with each other. For more information, use the '--help' flag.\n`));
     let res = '';
-    const localTags = await GitServiceTagger.listTagsLocal();
-    const remoteTags = await GitServiceTagger.listTagsRemote();
+    const localTags = await TaggerService.listTagsLocal();
+    const remoteTags = await TaggerService.listTagsRemote();
     const existTag = localTags.find(({ tag }) => tag === tagName);
     switch (optionsList[0].name) {
         case 'add': {
             if (!message && !existTag)
-                res = await GitServiceTagger.createLightweightTag(tagName).then(() => `\n > 'New light tag added!: ${tagName}'\n`);
+                res = await TaggerService.createLightweightTag(tagName).then(() => `\n > 'New light tag added!: ${tagName}'\n`);
             else if (message && !existTag)
-                res = await GitServiceTagger.createAnnotatedTag({ name: tagName, message }).then(() => `\n > 'New annotated tag added!: ${tagName}'\n`);
+                res = await TaggerService.createAnnotatedTag({ name: tagName, message }).then(() => `\n > 'New annotated tag added!: ${tagName}'\n`);
             if (remote) {
                 if (existTag)
                     console.warn(`\n > Tag ${tagName} already exists locally at ${existTag.commit}, trying to push ${remote}!`);
                 console.log(`\n > Pushing tag to remote ${remote}...`);
-                res += `\n > Remote ${remote}:\n   ${await GitServiceTagger.pushTag(tagName)}\n\n`;
+                res += `\n > Remote ${remote}:\n   ${await TaggerService.pushTag(tagName)}\n\n`;
             }
             break;
         }
@@ -1853,10 +1901,10 @@ tagCommand.action(async ({ tagName, message, remove, remote, list, listLocal, li
             if (!existTag)
                 console.warn(`\n > Tag ${remove} does not exist locally!`);
             else
-                res = 'Tag removed!: ' + (await GitServiceTagger.deleteTag(remove));
+                res = 'Tag removed!: ' + (await TaggerService.deleteTag(remove));
             if (remote) {
                 console.log(`\n > Pushing changes to remote ${remote}...`);
-                const commandRes = await GitServiceTagger.deleteRemoteTag(remove, remote);
+                const commandRes = await TaggerService.deleteRemoteTag(remove, remote);
                 res += `Tag removed from '${remote}'!: ${commandRes}`;
             }
         }
