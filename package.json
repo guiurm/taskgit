@@ -1,6 +1,6 @@
 {
   "name": "@guiurm/taskgit",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "main": "dist/cli.cjs",
   "scripts": {
     "dev": "npm run build && cross-env NODE_ENV=development node dist/cli.cjs",
