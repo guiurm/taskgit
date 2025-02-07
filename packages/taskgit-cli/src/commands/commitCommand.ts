@@ -107,7 +107,7 @@ commitCommand.action(async ({ body, title, type, ammend }) => {
 
     if (await confirm('Is this correct?')) {
         console.log('\nCommitting...');
-        const command = `git commit ${ammend ? '--amend' : ''} -m "${type}${target}: ${title}\n\n${body}"`;
+        const command = `git commit ${ammend ? '--amend' : ''} -m "${type}${target}: ${title}" ${body ? `-m "${body}"` : ''}`;
         const result = await exeCommand(command);
         console.log('result:');
         console.log(result);
