@@ -409,6 +409,89 @@ class CacheStore {
     }
 }
 
+class AppError extends Error {
+    errorTracks;
+    static VERSION = VERSION;
+    static NAME = NAME;
+    static VERSION_NAME = VERSION_NAME;
+    exitCode;
+    constructor(message, exitCode = 1) {
+        super(message);
+        this.name = 'AppError';
+        this.exitCode = exitCode;
+        this.errorTracks = this.stack
+            ? this.stack
+                .split('\n')
+                .filter(l => l.includes('    at '))
+                .map(l => l.trim())
+            : [];
+    }
+    get errorTrack() {
+        return this.errorTracks.map(l => `    ${l}`).join('\n');
+    }
+    get lastTrack() {
+        return this.errorTracks[0];
+    }
+    get VERSION() {
+        return AppError.VERSION;
+    }
+    get NAME() {
+        return AppError.NAME;
+    }
+    get VERSION_NAME() {
+        return AppError.VERSION_NAME;
+    }
+}
+class FilesReportServiceError extends AppError {
+    command;
+    constructor(message, command) {
+        super(message, 2);
+        this.name = 'FilesReportServiceError';
+        this.command = command;
+    }
+}
+class ExternalServiceError extends AppError {
+    service;
+    constructor(message, service) {
+        super(message, 2);
+        this.name = 'ExternalServiceError';
+        this.service = service;
+    }
+}
+class CommandExecutionError extends AppError {
+    command;
+    error;
+    stdout;
+    stderr;
+    constructor({ command, error, message, stderr, stdout }) {
+        super(message, 1);
+        this.name = 'CommandExecutionError';
+        this.command = command;
+        this.error = error;
+        this.stderr = stderr;
+        this.stdout = stdout;
+    }
+}
+class ErrorHandler {
+    static _subscriber = [];
+    static subscribe(subscriber) {
+        this._subscriber.push(subscriber);
+        return () => this.unsubscribe(subscriber);
+    }
+    static unsubscribe(subscriber) {
+        this._subscriber = this._subscriber.filter(s => s !== subscriber);
+    }
+    static throw(error) {
+        let i = 0;
+        this._subscriber.forEach(s => {
+            s(error);
+            i++;
+        });
+        if (i === 0)
+            throw error;
+    }
+}
+
 class MarkdownService {
     _content;
     constructor() {
@@ -421,6 +504,8 @@ class MarkdownService {
      * @returns {this} The markdown service to chain methods.
      */
     addTitle(text, level = 1) {
+        if (level < 1 || level > 6)
+            ErrorHandler.throw(new AppError('Level must be between 1 and 6.'));
         const title = '#'.repeat(level) + ` ${text}\n`;
         this._content += title;
         return this;
@@ -621,94 +706,31 @@ class ChangeLogService {
     }
 }
 
-class AppError extends Error {
-    errorTracks;
-    static VERSION = VERSION;
-    static NAME = NAME;
-    static VERSION_NAME = VERSION_NAME;
-    exitCode;
-    constructor(message, exitCode = 1) {
-        super(message);
-        this.name = 'AppError';
-        this.exitCode = exitCode;
-        this.errorTracks = this.stack
-            ? this.stack
-                .split('\n')
-                .filter(l => l.includes('    at '))
-                .map(l => l.trim())
-            : [];
-    }
-    get errorTrack() {
-        return this.errorTracks.map(l => `    ${l}`).join('\n');
-    }
-    get lastTrack() {
-        return this.errorTracks[0];
-    }
-    get VERSION() {
-        return AppError.VERSION;
-    }
-    get NAME() {
-        return AppError.NAME;
-    }
-    get VERSION_NAME() {
-        return AppError.VERSION_NAME;
-    }
-}
-class FilesReportServiceError extends AppError {
-    command;
-    constructor(message, command) {
-        super(message, 2);
-        this.name = 'FilesReportServiceError';
-        this.command = command;
-    }
-}
-class ExternalServiceError extends AppError {
-    service;
-    constructor(message, service) {
-        super(message, 2);
-        this.name = 'ExternalServiceError';
-        this.service = service;
-    }
-}
-class CommandExecutionError extends AppError {
-    command;
-    error;
-    stdout;
-    stderr;
-    constructor({ command, error, message, stderr, stdout }) {
-        super(message, 1);
-        this.name = 'CommandExecutionError';
-        this.command = command;
-        this.error = error;
-        this.stderr = stderr;
-        this.stdout = stdout;
-    }
-}
-class ErrorHandler {
-    static _subscriber = [];
-    static subscribe(subscriber) {
-        this._subscriber.push(subscriber);
-        return () => this.unsubscribe(subscriber);
-    }
-    static unsubscribe(subscriber) {
-        this._subscriber = this._subscriber.filter(s => s !== subscriber);
-    }
-    static throw(error) {
-        let i = 0;
-        this._subscriber.forEach(s => {
-            s(error);
-            i++;
-        });
-        if (i === 0)
-            throw error;
-    }
-}
-
+/**
+ * Checks if a given string is a safe command to execute.
+ *
+ * This function evaluates whether the input string contains only
+ * characters that are considered safe for use in shell commands,
+ * i.e., it does not contain any special characters that could
+ * alter the behavior of the shell command.
+ *
+ * @param {string} command The string to evaluate.
+ * @param {boolean} iKnowWhatImDoing Whether to bypass the check. Defaults to false.
+ * @returns A boolean indicating if the string is safe (true) or not (false).
+ */
+const isSafeCommand = (command, iKnowWhatImDoing = false) => {
+    if (iKnowWhatImDoing)
+        return true;
+    if (!command || typeof command !== 'string' || command.length === 0)
+        return false;
+    const unsafePattern = /[;&|<>]/;
+    return !unsafePattern.test(command);
+};
 /**
  * Executes a command and returns the result as a promise.
  *
- * @param command The command to execute. Can be a string or an array of strings.
- * @param onError A callback that will be called if the command execution fails.
+ * @param {string | string[]} command The command to execute. Can be a string or an array of strings.
+ * @param {Function} onError A callback that will be called if the command execution fails.
  *                If the callback returns true, the method will throw an error.
  *                If it returns false or nothing, the method will return the error
  *                as a CommandExecutionError. If the callback returns a promise,
@@ -716,17 +738,9 @@ class ErrorHandler {
  *                what to do.
  * @returns A promise that resolves with the output of the command as a string.
  */
-const exeCommand = async (command, onError = () => false) => {
-    if (Array.isArray(command))
-        command = command.map(transformCommandArg).join(' ');
-    else {
-        const regex = /"[^"]*"|[^ ]+/g;
-        const marches = command.match(regex);
-        if (marches !== null)
-            command = marches.map(transformCommandArg).join(' ');
-        else
-            command = transformCommandArg(command);
-    }
+const exeCommand = async (command, onError = () => false, iKnowWhatImDoing = false) => {
+    if (!isSafeCommand(command, iKnowWhatImDoing))
+        ErrorHandler.throw(new AppError('Unsafe command detected.'));
     return new Promise(resolve => {
         node_child_process.exec(command, async (error, stdout, stderr) => {
             const mssg = stdout.length > 0 ? stdout : stderr;
@@ -740,69 +754,58 @@ const exeCommand = async (command, onError = () => false) => {
     });
 };
 /**
- * Checks if a given string is a safe command argument.
+ * Executes a given command synchronously and returns the result as a string.
  *
- * This function evaluates whether the input string contains only
- * characters that are considered safe for use in shell commands,
- * i.e., it does not contain any special characters that could
- * alter the behavior of the shell command.
- *
- * @param arg The string to evaluate.
- * @returns A boolean indicating if the string is safe (true) or not (false).
+ * @param {string} command - The command to execute.
+ * @param {Function} onError - A callback invoked if command execution fails.
+ *                             If it returns true, an error is thrown. Otherwise,
+ *                             a CommandExecutionError is returned.
+ * @param {boolean} iKnowWhatImDoing - Flag to bypass command safety checks. Defaults to false.
+ * @returns {string} - The output of the executed command.
+ * @throws {AppError} - If the command is deemed unsafe.
+ * @throws {CommandExecutionError} - If command execution fails and the onError callback returns false.
  */
-const isSafeCommandArg = (arg) => {
-    if (typeof arg !== 'string')
-        return false;
-    const optionRegex = /^--[a-zA-Z0-9_-]+(?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$|^-[a-zA-Z0-9](?:=(?:"[^"]*"|'[^']*'|[^=]+)|$)?$/gm;
-    if (optionRegex.test(arg))
-        return true;
-    const regex = /^[^|><&$`"'\(\)\;\\ ]+$/;
-    return regex.test(arg);
-};
-//despues del if pero antes de probar la regex valida si cumple con patron opcion de comando, es decir -m=2 -m="a b" -m="c" --m="d e"
-/**
- * Replaces special characters in a string with an empty string.
- *
- * This function takes a string and replaces any special characters
- * that are not allowed in shell commands with an empty string. The
- * replaced characters are: |, <, >, &, $, `, ", ', (, ), \, ;
- * and space.
- *
- * @param arg The string to process.
- * @returns The string with all special characters replaced.
- */
-const eliminateSpecialCharacters = (arg) => {
-    //return arg.replace(regex, '');
-    return arg;
+const exeCommandSync = (command, onError = () => false, iKnowWhatImDoing = false) => {
+    if (!isSafeCommand(command, iKnowWhatImDoing))
+        ErrorHandler.throw(new AppError('Unsafe command detected.'));
+    try {
+        return node_child_process.execSync(command).toString();
+    }
+    catch (err) {
+        const error = err;
+        const e = new CommandExecutionError({
+            command,
+            error,
+            message: error.message,
+            stderr: error.stderr ?? '',
+            stdout: error.stdout ?? ''
+        });
+        if (onError(e))
+            ErrorHandler.throw(e);
+        else
+            throw e;
+    }
 };
 /**
- * Transforms a command argument into a safe string that can be used in shell
- * commands.
+ * Execute multiple commands asynchronously.
  *
- * This function splits the argument into individual words and checks if
- * each word is a safe command argument. If a word is not safe, it is
- * replaced with an empty string.
+ * @param {string[]} commands - Commands to be executed.
  *
- * If the argument was split into multiple words, the resulting array is
- * joined back together with a space separator and enclosed in double
- * quotes.
- *
- * @param arg The string to transform.
- * @returns The transformed string.
+ * @returns {Promise<string[]>} - Resolves with an array of strings, where each
+ * string is the output of the corresponding command.
  */
-const transformCommandArg = (arg) => {
-    if (typeof arg !== 'string')
-        ErrorHandler.throw(new AppError('An internal error has occurred. Please review your configuration or consult the documentation.'));
-    let v = arg
-        .split(' ')
-        .map(eliminateSpecialCharacters)
-        .map(a => isSafeCommandArg(a)
-        ? a
-        : (ErrorHandler.throw(new AppError('An internal error has occurred. Please review your configuration or consult the documentation.')) ?? ''));
-    if (v.length > 1)
-        return ['"', v.join(' '), '"'].join('');
-    else
-        return v.join('');
+const exeMultipleCommands = async (commands) => {
+    return Promise.all(commands.map(c => exeCommand(c)));
+};
+/**
+ * Execute multiple commands synchronously.
+ *
+ * @param {string[]} commands - Commands to be executed.
+ *
+ * @returns {string[]} - Results of the commands.
+ */
+const exeMultipleCommandsSync = (commands) => {
+    return commands.map(c => exeCommandSync(c));
 };
 
 class BranchService {
@@ -1632,10 +1635,14 @@ exports.cp = cp;
 exports.createDirPath = createDirPath;
 exports.createFileHash = createFileHash;
 exports.exeCommand = exeCommand;
+exports.exeCommandSync = exeCommandSync;
+exports.exeMultipleCommands = exeMultipleCommands;
+exports.exeMultipleCommandsSync = exeMultipleCommandsSync;
 exports.existsPath = existsPath;
 exports.getFileStat = getFileStat;
 exports.isDirectory = isDirectory;
 exports.isFile = isFile;
+exports.isSafeCommand = isSafeCommand;
 exports.mf = mf;
 exports.mv = mv;
 exports.parseTagsList = parseTagsList;

@@ -263,10 +263,23 @@ declare class ErrorHandler {
 }
 
 /**
+ * Checks if a given string is a safe command to execute.
+ *
+ * This function evaluates whether the input string contains only
+ * characters that are considered safe for use in shell commands,
+ * i.e., it does not contain any special characters that could
+ * alter the behavior of the shell command.
+ *
+ * @param {string} command The string to evaluate.
+ * @param {boolean} iKnowWhatImDoing Whether to bypass the check. Defaults to false.
+ * @returns A boolean indicating if the string is safe (true) or not (false).
+ */
+declare const isSafeCommand: (command: string, iKnowWhatImDoing?: boolean) => boolean;
+/**
  * Executes a command and returns the result as a promise.
  *
- * @param command The command to execute. Can be a string or an array of strings.
- * @param onError A callback that will be called if the command execution fails.
+ * @param {string | string[]} command The command to execute. Can be a string or an array of strings.
+ * @param {Function} onError A callback that will be called if the command execution fails.
  *                If the callback returns true, the method will throw an error.
  *                If it returns false or nothing, the method will return the error
  *                as a CommandExecutionError. If the callback returns a promise,
@@ -274,7 +287,37 @@ declare class ErrorHandler {
  *                what to do.
  * @returns A promise that resolves with the output of the command as a string.
  */
-declare const exeCommand: (command: string | string[], onError?: (even: CommandExecutionError) => boolean | Promise<boolean>) => Promise<string>;
+declare const exeCommand: (command: string, onError?: (even: CommandExecutionError) => boolean | Promise<boolean>, iKnowWhatImDoing?: boolean) => Promise<string>;
+/**
+ * Executes a given command synchronously and returns the result as a string.
+ *
+ * @param {string} command - The command to execute.
+ * @param {Function} onError - A callback invoked if command execution fails.
+ *                             If it returns true, an error is thrown. Otherwise,
+ *                             a CommandExecutionError is returned.
+ * @param {boolean} iKnowWhatImDoing - Flag to bypass command safety checks. Defaults to false.
+ * @returns {string} - The output of the executed command.
+ * @throws {AppError} - If the command is deemed unsafe.
+ * @throws {CommandExecutionError} - If command execution fails and the onError callback returns false.
+ */
+declare const exeCommandSync: (command: string, onError?: (even: CommandExecutionError) => boolean | Promise<boolean>, iKnowWhatImDoing?: boolean) => string | undefined;
+/**
+ * Execute multiple commands asynchronously.
+ *
+ * @param {string[]} commands - Commands to be executed.
+ *
+ * @returns {Promise<string[]>} - Resolves with an array of strings, where each
+ * string is the output of the corresponding command.
+ */
+declare const exeMultipleCommands: (commands: string[]) => Promise<string[]>;
+/**
+ * Execute multiple commands synchronously.
+ *
+ * @param {string[]} commands - Commands to be executed.
+ *
+ * @returns {string[]} - Results of the commands.
+ */
+declare const exeMultipleCommandsSync: (commands: string[]) => (string | undefined)[];
 
 declare class FileServiceError extends Error {
     readonly file: string;
@@ -970,4 +1013,4 @@ declare const parseTagsList: (data: string) => {
  */
 declare const processFiles: (data: string) => TFileListStatus;
 
-export { AppError, BranchService, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, type TAllVersionOptions, type TDiffOutputFileConf, type TExactVersionOptions, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, type TPreVersionOptions, type TVersionOptions, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, existsPath, getFileStat, isDirectory, isFile, mf, mv, parseTagsList, processFiles, resolvePath, rf, rm, rmdir, sha1, wf };
+export { AppError, BranchService, type CacheFile, CacheStore, ChangeLogService, CommandExecutionError, type CommandExecutionErrorConstructor, ConfigService, DiffOutputFile, DiffService, ErrorHandler, ExternalServiceError, type FileChanges, FileServiceError, FilesReport, FilesReportService, FilesReportServiceError, type GitDiffOptions, type GitLogCommitInfo, IS_DEV, IS_PROD, IS_TEST, LOG_SPLITTER, MarkdownService, NAME, NpmService, SubtreeService, type TAllVersionOptions, type TDiffOutputFileConf, type TExactVersionOptions, type TFileListStatus, TMP_DIR, TMP_PATCH_DIR, type TPreVersionOptions, type TVersionOptions, TaggerService, VERSION, VERSION_NAME, cp, createDirPath, createFileHash, exeCommand, exeCommandSync, exeMultipleCommands, exeMultipleCommandsSync, existsPath, getFileStat, isDirectory, isFile, isSafeCommand, mf, mv, parseTagsList, processFiles, resolvePath, rf, rm, rmdir, sha1, wf };
