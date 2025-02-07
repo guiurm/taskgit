@@ -8,7 +8,7 @@
     "build:core": "npm run build -w @guiurm/taskgit-core",
     "build:cli": "npm run build -w @guiurm/taskgit-cli",
     "u": "uglifyjs -m --mangle-props -c -o dist/cli.js packages/taskgit-cli/dist/cli.cjs",
-    "build": "npm run build:core && npm run build:cli && npm run u"
+    "build": "npm run build:core && npm run build:cli"
   },
   "files": [
     "dist",
