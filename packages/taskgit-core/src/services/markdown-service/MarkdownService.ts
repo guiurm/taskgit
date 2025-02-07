@@ -1,4 +1,5 @@
 import { wf } from '@services/file-management-service/fileService';
+import { AppError, ErrorHandler } from '../error-handler';
 
 class MarkdownService {
     private _content: string;
@@ -14,6 +15,7 @@ class MarkdownService {
      * @returns {this} The markdown service to chain methods.
      */
     public addTitle(text: string, level: number = 1): this {
+        if (level < 1 || level > 6) ErrorHandler.throw(new AppError('Level must be between 1 and 6.'));
         const title = '#'.repeat(level) + ` ${text}\n`;
         this._content += title;
         return this;

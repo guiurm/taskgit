@@ -20,8 +20,8 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@guiurm/askly": "^1.0.1",
+    "@guiurm/askly": "github:guiurm/askly#lib",
     "@guiurm/taskgit-core": "^1.1.0",
-    "@guiurm/termify": "^2.1.0"
+    "@guiurm/termify": "github:guiurm/termify#lib"
   }
 }
