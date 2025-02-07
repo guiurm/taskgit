@@ -1,6 +1,6 @@
 {
   "name": "@guiurm/taskgit-core",
-  "version": "1.2.0",
+  "version": "1.2.2",
   "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "type": "module",

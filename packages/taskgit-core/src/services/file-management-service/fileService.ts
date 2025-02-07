@@ -6,8 +6,10 @@ import {
     readdirSync,
     readFileSync,
     renameSync,
+    rmSync,
     Stats,
     statSync,
+    unlinkSync,
     writeFileSync
 } from 'node:fs';
 import { dirname, join } from 'path';
@@ -196,19 +198,107 @@ const isDirectory = (path: string): boolean => {
  *
  * @param {string} from - The source path of the file or directory to move.
  * @param {string} to - The destination path where the file or directory should be moved.
- * @throws {FileServiceError} If the source path does not exist.
+ * @param {boolean} [returnErrorList=false] - If true, instead of throwing errors, returns an array of objects with the following structure: {from: string, to: string, message: string}, where "from" and "to" are the paths of the file or directory that couldn't be moved, and "message" is the error string.
+ * @returns {void | { from: string; to: string; message: string }[]} - If returnErrorList is false, returns void. Otherwise returns an array of the above objects.
  */
-const mv = (from: string, to: string) => {
+const mv = (
+    from: string,
+    to: string,
+    returnErrorList: boolean = false
+): void | { from: string; to: string; message: string }[] => {
+    const failed: { from: string; to: string; message: string }[] = [];
     if (existsSync(from))
         if (isDirectory(from)) {
             mkdirSync(to, { recursive: true });
             readdirSync(from).forEach(f => {
-                cp(join(from, f), join(to, f));
+                failed.push(...(mv(join(from, f), join(to, f)) ?? []));
             });
         } else {
-            cp(from, to);
+            try {
+                cp(from, to);
+            } catch (error) {
+                const e = error as FileServiceError;
+                if (returnErrorList) failed.push({ from, to, message: (error as FileServiceError).message });
+                else throw e;
+            }
         }
-    else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
+    else failed.push({ from, to, message: `The file at '${from}' does not exist.` });
+
+    if (returnErrorList) return failed;
+    else return void 0;
+};
+
+/**
+ * Removes a directory at the specified path.
+ *
+ * @param {string} path - The path to the directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+const rmdir = (path: string, returnErrorList: boolean = false): void | { path: string; message: string }[] => {
+    const failed: { path: string; message: string }[] = [];
+    if (existsSync(path))
+        if (isDirectory(path)) {
+            try {
+                rmSync(path, { recursive: true, force: true });
+                // rmdirSync(path, { recursive: true, maxRetries: 10 });
+            } catch (error) {
+                if (returnErrorList) failed.push({ path, message: (error as FileServiceError).message });
+                else throw error;
+            }
+        } else {
+            failed.push({ path, message: `The path '${path}' is not a directory.` });
+        }
+    else failed.push({ path, message: `The file at '${path}' does not exist.` });
+
+    if (returnErrorList) return failed;
+    else return void 0;
+};
+
+/**
+ * Removes a file or directory at the specified path.
+ *
+ * If the path is a directory, it recursively deletes all its contents.
+ * If the path is a file, it deletes the file.
+ *
+ * @param {string} path - The path to the file or directory to be removed.
+ * @param {boolean} [returnErrorList=false] - If true, returns an array of error objects instead of throwing an error.
+ * @returns {void | { path: string; message: string }[]} - Returns void if `returnErrorList` is false.
+ * If `returnErrorList` is true, returns an array of objects containing the path and error message for each error encountered.
+ *
+ * @throws {FileServiceError} If an error occurs during the removal process, unless `returnErrorList` is true.
+ */
+
+const rm = (path: string, returnErrorList: boolean = false): void | { path: string; message: string }[] => {
+    const failed: { path: string; message: string }[] = [];
+    if (existsSync(path))
+        if (isDirectory(path)) {
+            readdirSync(path).forEach(f => {
+                failed.push(...(rm(join(path, f)) ?? []));
+            });
+            try {
+                rmSync(path, { recursive: true, force: true });
+                // rmdirSync(path);
+            } catch (error) {
+                if (returnErrorList) failed.push({ path, message: (error as FileServiceError).message });
+                else throw error;
+            }
+        } else {
+            try {
+                unlinkSync(path);
+            } catch (error) {
+                const e = error as FileServiceError;
+                if (returnErrorList) failed.push({ path, message: (error as FileServiceError).message });
+                else throw e;
+            }
+        }
+    else failed.push({ path, message: `The file at '${path}' does not exist.` });
+
+    if (returnErrorList) return failed;
+    else return void 0;
 };
 
 /**
@@ -218,14 +308,14 @@ const mv = (from: string, to: string) => {
  * @param {string} to - The destination path where the file should be copied.
  * @throws {FileServiceError} If the source file does not exist or if the source path is a directory.
  */
-const cp = (from: string, to: string) => {
+const cp = (from: string, to: string): void => {
     if (existsSync(from))
         if (isDirectory(from)) throw new FileServiceError(`The path is '${from}' is a directory.`, from, 'read');
         else
             try {
                 copyFileSync(from, to);
             } catch (error) {
-                new FileServiceError((error as Error).message, from, 'write');
+                throw new FileServiceError((error as Error).message, from, 'write');
             }
     else throw new FileServiceError(`The file at '${from}' does not exist.`, from, 'read');
 };
@@ -243,6 +333,8 @@ export {
     mv,
     resolvePath,
     rf,
+    rm,
+    rmdir,
     sha1,
     wf
 };
