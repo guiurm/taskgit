@@ -8,20 +8,30 @@ const changelogCommand = genCommand({
             name: 'from',
             flag: '-f',
             alias: ['--from'],
-            optionType: 'string'
+            optionType: 'string',
+            required: false
         },
 
         {
             name: 'to',
             flag: '-t',
             alias: ['--to'],
-            optionType: 'string'
+            optionType: 'string',
+            required: false
         },
         {
             name: 'branch',
             flag: '-b',
             alias: ['--branch'],
-            optionType: 'string'
+            optionType: 'string',
+            required: false
+        },
+        {
+            name: 'version',
+            flag: '-v',
+            alias: ['--version'],
+            optionType: 'string',
+            required: true
         }
     ] as const,
     args: [
@@ -33,9 +43,9 @@ const changelogCommand = genCommand({
     ] as const
 });
 
-changelogCommand.action(async ({ from, to, branch }, { outputFile }) => {
+changelogCommand.action(async ({ from, to, branch, version }, { outputFile }) => {
     const commits = await FilesReportService.log({ to, from, branch });
-    ChangeLogService.generateChangelog({ commits, version: '1.0.0', outputFile });
+    ChangeLogService.generateChangelog({ commits, version, outputFile });
 
     console.log(`New release notes in: ${outputFile ?? 'changelog.md'}`);
 });

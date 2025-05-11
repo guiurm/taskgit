@@ -9,6 +9,11 @@ export default [
                 format: "cjs",
                 entryFileNames: "cli.cjs",
             },
+            {
+                dir: "../../dist",
+                format: "cjs",
+                entryFileNames: "cli.cjs",
+            },
         ],
         plugins: [resolve()],
     },
